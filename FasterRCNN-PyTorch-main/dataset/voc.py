@@ -59,9 +59,7 @@ class VOCDataset(Dataset):
         self.im_dir = im_dir
         self.ann_dir = ann_dir
         classes = [
-            'person', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep',
-            'aeroplane', 'bicycle', 'boat', 'bus', 'car', 'motorbike', 'train',
-            'bottle', 'chair', 'diningtable', 'pottedplant', 'sofa', 'tvmonitor'
+            'person'
         ]
         classes = sorted(classes)
         classes = ['background'] + classes
