@@ -1,0 +1,128 @@
+{% load gtm_hit_extra%}
+
+
+<!-- <div class="well col-sm-12 big">
+  <h4 class="col-sm-12">Infos</h4>
+  <div class="col-sm-12">
+    <label for="pID" class="col-sm-5">Person ID:</label>
+    <div class="btn-group" role="group">
+    <button class="btn btn-primary" onclick="changeID('past')">Propagate Backwards</button>
+
+    <button class="btn btn-primary" onclick="changeID()">Change Current</button>
+    <button class="btn btn-primary" onclick="changeID('future')">Propagate Forwards</button>
+  </div>
+    <input class="panel col-sm-2" id="pID"></input>
+    </div>
+  </div>
+  <div class="col-sm-12">
+    <label for="pHeight" class="col-smnc-5">Person height:</label>
+    <button class="btn btn-primary" onclick="decreaseHeight()">-</button>
+    <button class="btn btn-primary" onclick="increaseHeight()">+</button>
+
+    <div class="panel col-sm-2" id="pHeight">-1</panel>
+
+    </div>
+  </div>
+  <div class="col-sm-12">
+    <label for="pWidth" class="col-sm-5">Person width:</label>
+    <button class="btn btn-primary" onclick="decreaseWidth()">-</button>
+    <button class="btn btn-primary" onclick="increaseWidth()">+</button>
+
+    <div class="panel col-sm-2" id="pWidth">-1</panel>
+
+    </div>
+  </div>
+  <div class="col-sm-12">
+    <label for="pWidth" class="col-sm-5">Person length:</label>
+    <button class="btn btn-primary" onclick="decreaseLength()">-</button>
+    <button class="btn btn-primary" onclick="increaseLength()">+</button>
+
+    <div class="panel col-sm-2" id="pLength">-1</panel>
+
+    </div>
+  </div>
+</div> -->
+
+<!-- <script>
+  function toggleInfos() {
+    var infos = document.querySelector('.infos-container');
+    var toggleBtn = document.querySelector('.toggle-infos-btn');
+
+    if (infos.style.display === 'none') {
+      infos.style.display = 'block';
+      toggleBtn.innerText = 'Hide Infos';
+    } else {
+      infos.style.display = 'none';
+      toggleBtn.innerText = 'Show Infos';
+    }
+  }
+</script> -->
+
+
+<!-- <div class="well infos-container" style="display: none;bottom: 300px; right: 0; position:fixed; z-index: 1000;"> -->
+<h4 class="infos-header">Selected Person Info</h4>
+<div class="row">
+  <div class="col-sm-6">
+    <p>First frame:</p>
+    <p>X</p>
+  </div>
+  <div class="col-sm-6">
+    <p>Last frame:</p>
+    <p>X</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col-sm-3">
+    <label for="pID">ID:</label>
+    <input class="" style="width: 50px;" id="pID"></input>
+
+  </div>
+  <div class="col-sm-5">
+    <label for="propagate">Propagate:</label>
+    <select id="propagate">
+      <option value="future">Future</option>
+      <option value="past">Past</option>
+      <option value="none">None</option>
+    </select>
+
+    <label for="conflicts">Conflicts:</label>
+    <select id="conflicts">
+      <option value="assign_new">Assign new ID</option>
+      <option value="delete">Delete</option>
+    </select>
+  </div>
+
+  <div class="col-sm-4">
+    <button class="btn btn-sm btn-primary" onclick="changeID()">Change ID</button>
+
+  </div>
+</div>
+<div class="row">
+
+  <div class="col-sm-4">
+    <div class="btn-group" role="group">
+      <div id="pHeight">-1</div>
+
+      <button class="btn btn-primary" onclick="decreaseHeight()">-</button>
+      <button class="btn btn-primary" onclick="increaseHeight()">+</button>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="btn-group" role="group">
+      <div id="pWidth">-1</div>
+      <button class="btn btn-primary" onclick="decreaseWidth()">-</button>
+      <button class="btn btn-primary" onclick="increaseWidth()">+</button>
+    </div>
+  </div>
+
+  <div class="col-sm-4">
+    <div class="btn-group" role="group">
+      <div id="pLength">-1</div>
+      <button class="btn btn-primary" onclick="decreaseLength()">-</button>
+      <button class="btn btn-primary" onclick="increaseLength()">+</button>
+    </div>
+  </div>
+
+</div>
+</div>
+<!-- </div> -->

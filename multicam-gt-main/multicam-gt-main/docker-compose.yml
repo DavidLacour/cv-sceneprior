@@ -1,0 +1,40 @@
+version: "3.3"
+
+volumes:
+  pg-data: {}
+
+networks:
+  backend:
+  annotations_net:
+    external:
+      name: annotations_net
+
+services:
+  django:
+    restart: always
+    build: .
+    environment:
+      - DJANGO_SETTINGS_MODULE
+      - DJANGO_DEFAULT_TIMEZONE
+      - WEB_HOST
+
+    networks:
+      - backend
+      - annotations_net
+    command: bash -c "python manage.py migrate ; python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - "./annotation_dset:/var/www/gtm_hit/static/gtm_hit/dset"
+      - "./gtmarker/settings_prod.py:/var/www/gtmarker/settings.py"
+
+  postgres:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_PASSWORD: "jXhsdjhg83D!#"
+      POSTGRES_USER: "django"
+      POSTGRES_DB: "annotations"
+
+    volumes:
+      - "pg-data:/var/lib/postgresql/data"
+    networks:
+      - backend
+
