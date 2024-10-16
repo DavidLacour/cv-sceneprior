@@ -59,7 +59,7 @@ class VOCDataset(Dataset):
         self.im_dir = im_dir
         self.ann_dir = ann_dir
         classes = [
-            'person'
+            'person','vehicle','train'
         ]
         classes = sorted(classes)
         classes = ['background'] + classes
