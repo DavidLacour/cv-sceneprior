@@ -10,8 +10,8 @@ from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
 
-#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def train(args):
     # Read the config file #
@@ -22,6 +22,8 @@ def train(args):
             print(exc)
     print(config)
     ########################
+    if args.forcecpu:
+        device = torch.device('cpu')
     
     dataset_config = config['dataset_params']
     model_config = config['model_params']
@@ -106,5 +108,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for faster rcnn training')
     parser.add_argument('--config', dest='config_path',
                         default='config/conf.yaml', type=str)
+    parser.add_argument('--forcecpu', action='store_true',
+                        help='Force using CPU even if CUDA is available')
     args = parser.parse_args()
     train(args)

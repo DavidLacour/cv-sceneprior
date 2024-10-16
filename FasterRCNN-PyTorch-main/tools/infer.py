@@ -190,6 +190,7 @@ def infer(args):
     # Hard coding the low score threshold for inference on images for now
     # Should come from config
     faster_rcnn_model.roi_head.low_score_threshold = 0.7
+   
     
     for sample_count in tqdm(range(10)):
         random_idx = random.randint(0, len(voc))
@@ -311,6 +312,8 @@ if __name__ == '__main__':
                         default=False, type=bool)
     parser.add_argument('--infer_samples', dest='infer_samples',
                         default=True, type=bool)
+    parser.add_argument('--forcecpu', action='store_true',
+                        help='Force using CPU even if CUDA is available')
     args = parser.parse_args()
     if args.infer_samples:
         infer(args)

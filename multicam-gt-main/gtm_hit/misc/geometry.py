@@ -173,6 +173,41 @@ def project_world_to_camera(world_point, K1, R1, T1):
     return point1[:2]
 
 
+def get_cuboid_from_ground_world2(world_point, calib, height, width, length, theta):
+    CUBOID_VERTEX_COUNT = 10  # Assuming this is defined based on CuboidVertexEnum
+
+    cuboid_points3d = np.zeros((CUBOID_VERTEX_COUNT, 3))
+    
+    # Adjust the coordinates to make world_point the lowest x, y, z
+    cuboid_points3d[CuboidVertexEnum.FrontTopRight] = [width, length, height]
+    cuboid_points3d[CuboidVertexEnum.FrontTopLeft] = [0, length, height]
+    cuboid_points3d[CuboidVertexEnum.RearTopRight] = [width, 0, height]
+    cuboid_points3d[CuboidVertexEnum.RearTopLeft] = [0, 0, height]
+    cuboid_points3d[CuboidVertexEnum.FrontBottomRight] = [width, length, 0]
+    cuboid_points3d[CuboidVertexEnum.FrontBottomLeft] = [0, length, 0]
+    cuboid_points3d[CuboidVertexEnum.RearBottomRight] = [width, 0, 0]
+    cuboid_points3d[CuboidVertexEnum.RearBottomLeft] = [0, 0, 0]
+    cuboid_points3d[CuboidVertexEnum.Base] = [width/2, length/2, 0]
+    cuboid_points3d[CuboidVertexEnum.Direction] = [width/2, length, 0]
+
+    # Create rotation matrix
+    rotz = np.array([
+        [np.cos(theta), -np.sin(theta), 0],
+        [np.sin(theta), np.cos(theta), 0],
+        [0, 0, 1]
+    ])
+
+    # Apply rotation
+    cuboid_points3d = (rotz @ cuboid_points3d.T).T
+
+    # Apply translation
+    cuboid_points3d = cuboid_points3d + world_point.T
+
+    # Project 3D points to 2D
+    cuboid_points2d = get_projected_points(cuboid_points3d, calib)
+
+    return cuboid_points2d
+
 def get_cuboid_from_ground_world(world_point, calib, height, width, length,theta):
     
     cuboid_points3d = np.zeros((CUBOID_VERTEX_COUNT, 3))
@@ -247,7 +282,7 @@ class CuboidVertexEnum(IntEnum):
 CUBOID_VERTEX_COUNT = 10
 
 def get_projected_points(points3d, calib, undistort=False):
-    undistort = settings.UNDISTORTED_FRAMES
+    #undistort = settings.UNDISTORTED_FRAMES
     points3d = np.array(points3d).reshape(-1, 3)
     Rvec = calib.extrinsics.get_R_vec()  # cv.Rodrigues
     Tvec = calib.extrinsics.T
