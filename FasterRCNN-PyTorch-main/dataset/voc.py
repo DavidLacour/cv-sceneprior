@@ -8,7 +8,7 @@ from PIL import Image
 from tqdm import tqdm
 from torch.utils.data.dataset import Dataset
 import xml.etree.ElementTree as ET
-
+import numpy as np
 
 def load_images_and_anns(im_dir, ann_dir, label2idx):
     r"""
@@ -24,7 +24,7 @@ def load_images_and_anns(im_dir, ann_dir, label2idx):
     for ann_file in tqdm(glob.glob(os.path.join(ann_dir, '*.xml'))):
         im_info = {}
         im_info['img_id'] = os.path.basename(ann_file).split('.xml')[0]
-        im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
+        im_info['filename'] = os.path.join(im_dir, '{}.npy'.format(im_info['img_id']))
         ann_info = ET.parse(ann_file)
         root = ann_info.getroot()
         size = root.find('size')
@@ -73,7 +73,7 @@ class VOCDataset(Dataset):
     
     def __getitem__(self, index):
         im_info = self.images_info[index]
-        im = Image.open(im_info['filename'])
+        im = np.load(im_info['filename'])
         to_flip = False
         if self.split == 'train' and random.random() < 0.5:
             to_flip = True

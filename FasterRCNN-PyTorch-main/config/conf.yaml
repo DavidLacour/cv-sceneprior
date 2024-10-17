@@ -38,4 +38,4 @@ train_params:
   num_epochs: 2
   lr_steps : [12, 16]
   lr: 0.001
-  ckpt_name: 'cams_model_weigths.pth'
+  ckpt_name: 'cloe.pth'

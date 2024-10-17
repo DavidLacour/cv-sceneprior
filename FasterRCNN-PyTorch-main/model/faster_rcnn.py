@@ -739,12 +739,37 @@ class ROIHead(nn.Module):
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         return pred_boxes, pred_labels, pred_scores
 
+def add_channel_to_vgg16(num_channels=4,pretrained=False):
+    vgg16 = torchvision.models.vgg16(pretrained)
+    first_conv_layer = vgg16.features[0]
+    new_conv_layer = nn.Conv2d(
+        in_channels=num_channels,
+        out_channels=first_conv_layer.out_channels,
+        kernel_size=first_conv_layer.kernel_size,
+        stride=first_conv_layer.stride,
+        padding=first_conv_layer.padding,
+        bias=first_conv_layer.bias is not None
+    )
+    # Copy the weights from the original layer to the new layer
+    with torch.no_grad():
+        new_conv_layer.weight[:, :3] = first_conv_layer.weight
+        if num_channels > 3:
+            # Initialize the weights for the additional channel(s)
+            new_conv_layer.weight[:, 3:] = torch.randn_like(torch.mean(first_conv_layer.weight, dim=1, keepdim=True))
+        
+        if first_conv_layer.bias is not None:
+            new_conv_layer.bias = first_conv_layer.bias
+    
+    vgg16.features[0] = new_conv_layer
+    
+    return vgg16
 
 class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
-        vgg16 = torchvision.models.vgg16(pretrained=True)
+        #vgg16 = torchvision.models.vgg16(pretrained=False)
+        vgg16 = add_channel_to_vgg16(num_channels=4)
         self.backbone = vgg16.features[:-1]
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
                                          scales=model_config['scales'],
@@ -828,3 +853,7 @@ class FasterRCNN(nn.Module):
                                                                      image.shape[-2:],
                                                                      old_shape)
         return rpn_output, frcnn_output
+
+
+
+
