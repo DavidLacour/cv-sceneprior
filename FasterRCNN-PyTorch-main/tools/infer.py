@@ -199,12 +199,9 @@ def infer(args):
         random_idx = random.randint(0, len(voc))
         im, target, fname = voc[random_idx]
         im = im.unsqueeze(0).float().to(device)
-        print(fname)
-        if fname.endswith('.npy'):
-            fname = fname[:-4] + '.jpg'
-
         
-        gt_im = cv2.imread(fname)
+        
+        gt_im = np.load(fname, allow_pickle=True)
         gt_im_copy = gt_im.copy()
         
         # Saving images with ground truth boxes
@@ -238,7 +235,7 @@ def infer(args):
         boxes = frcnn_output['boxes']
         labels = frcnn_output['labels']
         scores = frcnn_output['scores']
-        im = cv2.imread(fname)
+        im = np.load(fname, allow_pickle=True)
         im_copy = im.copy()
         
         # Saving images with predicted boxes
@@ -269,6 +266,8 @@ def infer(args):
 
 
 def evaluate_map(args):
+    if args.forcecpu:
+        device = torch.device('cpu')
     faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args)
     gts = []
     preds = []

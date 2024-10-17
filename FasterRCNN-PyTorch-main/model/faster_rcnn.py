@@ -72,6 +72,11 @@ def apply_regression_pred_to_anchors_or_proposals(box_transform_pred, anchors_or
     :param anchors_or_proposals: (num_anchors_or_proposals, 4)
     :return pred_boxes: (num_anchors_or_proposals, num_classes, 4)
     """
+    #print(box_transform_pred)
+    #print("Shape of box_transform_pred:", box_transform_pred.shape)
+    #print("Shape of anchors_or_proposals:", anchors_or_proposals.shape)
+    
+
     box_transform_pred = box_transform_pred.reshape(
         box_transform_pred.size(0), -1, 4)
     
@@ -450,6 +455,8 @@ class RegionProposalNetwork(nn.Module):
         
         # Reshape bbox predictions to be (Batch Size * H_feat * W_feat * Number of Anchors Per Location, 4)
         # box_transform_pred -> (Batch_Size, Number of Anchors per location*4, H_feat, W_feat)
+        #print("BOX SHAPE")
+        #print(box_transform_pred)
         box_transform_pred = box_transform_pred.view(
             box_transform_pred.size(0),
             number_of_anchors_per_location,
@@ -645,7 +652,10 @@ class ROIHead(nn.Module):
         # cls_scores -> (proposals, num_classes)
         # box_transform_pred -> (proposals, num_classes * 4)
         ##############################################
-        
+
+        #print("Shape of cls_scores: roi head", cls_scores.shape)
+        #print("Shape of box_transform_pred roi head :", box_transform_pred.shape)
+            
         num_boxes, num_classes = cls_scores.shape
         box_transform_pred = box_transform_pred.reshape(num_boxes, num_classes, 4)
         frcnn_output = {}
@@ -788,9 +798,11 @@ class FasterRCNN(nn.Module):
         dtype, device = image.dtype, image.device
         
         # Normalize
-        mean = torch.as_tensor(self.image_mean, dtype=dtype, device=device)
-        std = torch.as_tensor(self.image_std, dtype=dtype, device=device)
-        image = (image - mean[:, None, None]) / std[:, None, None]
+        #mean = torch.as_tensor(self.image_mean[:3], dtype=dtype, device=device)
+        #std = torch.as_tensor(self.image_std[:3], dtype=dtype, device=device)
+    
+        # Apply normalization to the first 3 channels only
+        #image[0:3] = (image[0:3] - mean[:, None, None]) / std[:, None, None]
         #############
         
         # Resize to 1000x600 such that lowest size dimension is scaled upto 600
@@ -845,6 +857,8 @@ class FasterRCNN(nn.Module):
         rpn_output = self.rpn(image, feat, target)
         proposals = rpn_output['proposals']
         
+        #print("Shape of proposals forward fasterrcnn:", proposals.shape)
+        #print("Number of proposals forward fasterrcnn:", proposals.size(0))
         # Call ROI head and convert proposals to boxes
         frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
         if not self.training:
