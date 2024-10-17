@@ -77,7 +77,7 @@ class VOCDataset(Dataset):
         to_flip = False
         if self.split == 'train' and random.random() < 0.5:
             to_flip = True
-            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+            im = np.flip(im, axis=1).copy() 
         im_tensor = torchvision.transforms.ToTensor()(im)
         targets = {}
         targets['bboxes'] = torch.as_tensor([detection['bbox'] for detection in im_info['detections']])

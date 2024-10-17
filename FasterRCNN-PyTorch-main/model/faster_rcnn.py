@@ -779,8 +779,8 @@ class FasterRCNN(nn.Module):
         for layer in self.backbone[:10]:
             for p in layer.parameters():
                 p.requires_grad = False
-        self.image_mean = [0.485, 0.456, 0.406]
-        self.image_std = [0.229, 0.224, 0.225]
+        self.image_mean = [0.485, 0.456, 0.406, 25.0]
+        self.image_std = [0.229, 0.224, 0.225,10.0]
         self.min_size = model_config['min_im_size']
         self.max_size = model_config['max_im_size']
     

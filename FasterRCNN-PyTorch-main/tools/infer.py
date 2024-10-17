@@ -167,6 +167,8 @@ def load_model_and_dataset(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+    if args.forcecpu:
+        device = torch.device('cpu')
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
     
@@ -190,13 +192,18 @@ def infer(args):
     # Hard coding the low score threshold for inference on images for now
     # Should come from config
     faster_rcnn_model.roi_head.low_score_threshold = 0.7
-   
+    if args.forcecpu:
+        device = torch.device('cpu')
     
     for sample_count in tqdm(range(10)):
         random_idx = random.randint(0, len(voc))
         im, target, fname = voc[random_idx]
         im = im.unsqueeze(0).float().to(device)
+        print(fname)
+        if fname.endswith('.npy'):
+            fname = fname[:-4] + '.jpg'
 
+        
         gt_im = cv2.imread(fname)
         gt_im_copy = gt_im.copy()
         
@@ -307,7 +314,7 @@ def evaluate_map(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for faster rcnn inference')
     parser.add_argument('--config', dest='config_path',
-                        default='config/voc.yaml', type=str)
+                        default='config/conf.yaml', type=str)
     parser.add_argument('--evaluate', dest='evaluate',
                         default=False, type=bool)
     parser.add_argument('--infer_samples', dest='infer_samples',

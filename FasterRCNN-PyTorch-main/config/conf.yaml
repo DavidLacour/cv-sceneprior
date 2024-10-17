@@ -1,8 +1,8 @@
 dataset_params:
-  im_train_path: '../../train_data_small/JPEGImages'
-  ann_train_path: '../../train_data_small/Annotations'
-  im_test_path: '../../train_data_small/JPEGImages'
-  ann_test_path: '../../train_data_small/Annotations'
+  im_train_path: '../../depthsmall/Images'
+  ann_train_path: '../../depthsmall/Annotations'
+  im_test_path: '../../depthsmall/Images'
+  ann_test_path: '../../depthsmall/Annotations'
   num_classes : 2 # number_classes + background
 
 model_params:
