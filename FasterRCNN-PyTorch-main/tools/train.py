@@ -22,6 +22,8 @@ def train(args):
             print(exc)
     print(config)
     ########################
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.forcecpu:
         device = torch.device('cpu')
     

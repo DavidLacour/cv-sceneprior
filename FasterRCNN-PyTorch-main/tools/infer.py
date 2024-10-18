@@ -150,6 +150,7 @@ def compute_map(det_boxes, gt_boxes, iou_threshold=0.5, method='area'):
 
 
 def load_model_and_dataset(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Read the config file #
     with open(args.config_path, 'r') as file:
         try:
@@ -185,6 +186,7 @@ def load_model_and_dataset(args):
 
 
 def infer(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if not os.path.exists('samples'):
         os.mkdir('samples')
     faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args)
@@ -266,6 +268,7 @@ def infer(args):
 
 
 def evaluate_map(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.forcecpu:
         device = torch.device('cpu')
     faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args)

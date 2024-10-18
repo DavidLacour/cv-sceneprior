@@ -25,7 +25,7 @@ def get_bounding_box(points):
     return (min(x_coords), min(y_coords)), (max(x_coords), max(y_coords))
 
 
-def load_csv_and_generate_xml(csv_file, params_dir, output_folder, undistort=True):
+def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_method ,validated=True, undistort=True):
     os.makedirs(output_folder, exist_ok=True)
     
     cam_params = load_invision_calib(params_dir)
@@ -38,7 +38,17 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder, undistort=Tru
     
  
     df = df.sort_values('frame_id')
+    unique_names = df[~df["creation_method"].str.contains("imported", case=False, na=False)]["creation_method"].unique()
+    for name in unique_names:
+        print(name)
 
+    if validated:
+        df = df[df["validated"] == "t"]
+
+    if creation_method == "imported":
+        df = df[df["creation_method"].str.contains("imported")]
+    else: 
+        df = df[df["creation_method"] == creation_method]
 
     for frame_id, frame_data in df.groupby('frame_id', sort=True):
         #frame_id = frame_id + 3150
@@ -110,14 +120,23 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder, undistort=Tru
             output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
             tree.write(output_xml)
             print(f"Generated XML file: {output_xml}")
+# imported means the name contains imported 
+"""
+imported
+existing_annotation
+sync_IVANA__existing_annotation
+sync_SYNC17APR0908__sync_IVANA__existing_annotation
+sync_ANA__existing_annotation
+sync_SYNC17APR0908__sync_ANA__existing_annotation
+"""
 
-
-csv_file = "../../gtm_hit_annotations.csv"
+creation_method = "sync_SYNC17APR0908__sync_IVANA__existing_annotation"
+csv_file = "../../annotationsdifferentsmethods.csv"
 params_dir = "../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../outputAnnotations"
+output_folder = "../../outputAnnotations2" + creation_method + "validated"
 undistort = True  #might not work  
 
-#load_csv_and_generate_xml(csv_file, params_dir, output_folder, undistort)
+#load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
 print("XML files generation completed.")
 
 import os
@@ -149,12 +168,13 @@ def draw_annotations(image_path, xml_path):
     cv2.imshow('Image', img)
     cv2.waitKey(0)  
    
+# 00003752
+# 00003192
 
-    
 
-
-image_path = '../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00004140.jpg'
-xml_path =  '../../outputAnnotations/frame00000051_cam1_1.xml'
+image_path = '../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003752.jpg'
+xml_path =  output_folder + '/frame00003752_cam1_1.xml'
+#xml_path =  output_folder + '/frame00003192_cam1_1.xml'
 
 if not os.path.exists(image_path):
     print(f"Error: Image file not found: {image_path}")
