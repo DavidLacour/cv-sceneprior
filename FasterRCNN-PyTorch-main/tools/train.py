@@ -21,7 +21,7 @@ num_samples_per_epoch = 1000  # Number of random images to use in each epoch
 class SubsetRandomSampler(Sampler):
     def __init__(self, dataset_size, num_samples):
         self.dataset_size = dataset_size
-        self.num_samples = num_samples
+        self.num_samples = min(num_samples, dataset_size)
 
     def __iter__(self):
         # Randomly select a subset of indices for each epoch
