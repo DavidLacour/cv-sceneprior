@@ -10,10 +10,14 @@ from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#not defined correctly on colab sometimes
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
 
 def train(args):
+
+    #not defined correctly on colab sometimes
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
     # Read the config file #
     with open(args.config_path, 'r') as file:
         try:
