@@ -14,6 +14,21 @@ from torch.optim.lr_scheduler import MultiStepLR
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
 
+num_samples_per_epoch = 1000  # Number of random images to use in each epoch
+
+# Custom sampler for randomly selecting images in each epoch
+class SubsetRandomSampler(Sampler):
+    def __init__(self, dataset_size, num_samples):
+        self.dataset_size = dataset_size
+        self.num_samples = num_samples
+
+    def __iter__(self):
+        # Randomly select a subset of indices for each epoch
+        return iter(random.sample(range(self.dataset_size), self.num_samples))
+
+    def __len__(self):
+        return self.num_samples
+
 def train(args):
 
     #not defined correctly on colab sometimes
@@ -43,10 +58,18 @@ def train(args):
     voc = VOCDataset('train',
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'])
+    
+
+    total_samples = len(train_dataset)
+    num_samples_per_epoch = 1000
+    sampler = SubsetRandomSampler(total_samples, num_samples_per_epoch)
+    
+
     train_dataset = DataLoader(voc,
                                batch_size=8,
                                shuffle=True,
-                               num_workers=2)
+                               num_workers=2
+                               ,sampler=sampler)
     
     faster_rcnn_model = FasterRCNN(model_config,
                                    num_classes=dataset_config['num_classes'])
