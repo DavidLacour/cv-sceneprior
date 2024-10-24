@@ -4,8 +4,8 @@ import shutil
 from pathlib import Path
 from google.colab import drive
 
-# Mount Google Drive
-drive.mount('/content/drive')
+# Mount Google Drive before
+#drive.mount('/content/drive')
 
 def create_sample_folders(base_path, annotation_dir, images_dir, sample_size=1000, random_seed=42):
     """
