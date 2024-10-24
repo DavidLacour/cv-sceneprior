@@ -48,7 +48,10 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
     if creation_method == "imported":
         df = df[df["creation_method"].str.contains("imported")]
     else: 
-        df = df[df["creation_method"] == creation_method]
+       df = df[
+    (df["creation_method"].str.contains("imported")) | 
+    (df["creation_method"] == creation_method)
+]
 
     for frame_id, frame_data in df.groupby('frame_id', sort=True):
         #frame_id = frame_id + 3150
@@ -133,10 +136,10 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = "sync_SYNC17APR0908__sync_IVANA__existing_annotation"
 csv_file = "../../annotationsdifferentsmethods.csv"
 params_dir = "../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../outputAnnotations2" + creation_method + "validated"
+output_folder = "../../outputAnnotations2" + creation_method + "validatedandExisting"
 undistort = True  #might not work  
 
-#load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
+load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
 print("XML files generation completed.")
 
 import os
