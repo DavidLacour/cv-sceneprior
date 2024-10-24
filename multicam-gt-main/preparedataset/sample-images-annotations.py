@@ -80,8 +80,8 @@ def create_sample_folders(base_path, annotation_dir, images_dir, sample_size=100
 base_path = "/content/drive/MyDrive/CV/cv/cloe"  # Modify this path
 create_sample_folders(
     base_path=base_path,
-    annotation_dir="Annotations",
-    images_dir="JPEGImages",
+    annotation_dir="train_dataset/Annotations",
+    images_dir="train_dataset/JPEGImages",
     sample_size=1000,
     random_seed=42 
 )
