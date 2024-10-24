@@ -76,8 +76,8 @@ def create_sample_folders(base_path, annotation_dir, images_dir, sample_size=100
     print(f"List of sampled files saved to: {Path(base_path) / 'sampled_files.txt'}")
     print(f"Used random seed: {random_seed}")
 
-
-base_path = "/content/drive/MyDrive/CV/cv/cloe"  # Modify this path
+# PATH AND DIR
+base_path = "/content/drive/MyDrive/CV/cv/cloe"  
 create_sample_folders(
     base_path=base_path,
     annotation_dir="train_dataset/Annotations",
