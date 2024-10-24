@@ -9,6 +9,7 @@ from tqdm import tqdm
 from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.data import  Sampler
 
 #not defined correctly on colab sometimes
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
