@@ -173,7 +173,7 @@ def project_world_to_camera(world_point, K1, R1, T1):
     return point1[:2]
 
 
-def get_cuboid_from_ground_world2(world_point, calib, height, width, length, theta):
+def get_cuboid_from_ground_world2(world_point, calib, height, width, length, theta,undistort=False):
     CUBOID_VERTEX_COUNT = 10  # Assuming this is defined based on CuboidVertexEnum
 
     cuboid_points3d = np.zeros((CUBOID_VERTEX_COUNT, 3))
@@ -204,7 +204,7 @@ def get_cuboid_from_ground_world2(world_point, calib, height, width, length, the
     cuboid_points3d = cuboid_points3d + world_point.T
 
     # Project 3D points to 2D
-    cuboid_points2d = get_projected_points(cuboid_points3d, calib)
+    cuboid_points2d = get_projected_points2(cuboid_points3d, calib,undistort)
 
     return cuboid_points2d
 
@@ -281,8 +281,29 @@ class CuboidVertexEnum(IntEnum):
     Direction=9
 CUBOID_VERTEX_COUNT = 10
 
+def get_projected_points2(points3d, calib, undistort=False):
+    points3d = np.array(points3d).reshape(-1, 3)
+    Rvec = calib.extrinsics.get_R_vec()  # cv.Rodrigues
+    Tvec = calib.extrinsics.T
+    points2d, _ = cv.projectPoints(
+        points3d, Rvec, Tvec, calib.intrinsics.cameraMatrix, calib.intrinsics.distCoeffs)
+    if undistort:
+        #set_trace()
+        points3d_cam = calib.extrinsics.R @ points3d.T + calib.extrinsics.T.reshape(-1,1)
+        in_front_of_camera = (points3d_cam[2, :] > 0).all()
+        if not in_front_of_camera:
+            raise ValueError("Points are not in camera view.")
+        points3d_cam_rectified = calib.intrinsics.Rmat @ points3d_cam #correct the slant of the camera
+        points2d = calib.intrinsics.newCameraMatrix @ points3d_cam_rectified
+
+        points2d = points2d[:2,:]/points2d[2,:]
+        points2d = points2d.T
+    points2d = np.squeeze(points2d)
+    points2d = [tuple(p) for p in points2d]
+    return points2d
+
 def get_projected_points(points3d, calib, undistort=False):
-    #undistort = settings.UNDISTORTED_FRAMES
+    undistort = settings.UNDISTORTED_FRAMES
     points3d = np.array(points3d).reshape(-1, 3)
     Rvec = calib.extrinsics.get_R_vec()  # cv.Rodrigues
     Tvec = calib.extrinsics.T

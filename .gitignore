@@ -1,0 +1,8 @@
+# Ignore all __pycache__ directories
+**/__pycache__/
+
+
+FasterRCNN-PyTorch-main/samples/
+multicam-gt-main/preparedataset/
+
+
