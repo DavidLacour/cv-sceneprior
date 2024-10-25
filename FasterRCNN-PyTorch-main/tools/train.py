@@ -55,12 +55,12 @@ def train(args):
     voc = VOCDataset('train',
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'],
-                     depth_dir=['depth_path'])
+                     depth_dir=dataset_config['depth_path'])
     train_dataset = DataLoader(voc,
                                batch_size=32,
                                shuffle=True,
                                num_workers=4,
-                               collate_fn=custom_collate_fn)
+                               )
     
     faster_rcnn_model = FasterRCNN(model_config,
                                    num_classes=dataset_config['num_classes'])

@@ -29,8 +29,16 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
         depth_filename = f"{camera_name}_undistorted_depth.npy"
-        im_info['depthfilename'] = os.path.join(depth_dir, depth_filename)
+        depth_path = os.path.join(depth_dir, depth_filename)
+        if not os.path.exists(depth_path):
+            raise FileNotFoundError(f"Depth file not found: {depth_path}")
 
+        
+       
+
+        im_info['depthfilename'] = depth_path
+
+        
         ann_info = ET.parse(ann_file)
         root = ann_info.getroot()
         size = root.find('size')
