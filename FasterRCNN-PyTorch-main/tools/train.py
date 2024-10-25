@@ -57,7 +57,7 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=['depth_path'])
     train_dataset = DataLoader(voc,
-                               batch_size=2,
+                               batch_size=32,
                                shuffle=True,
                                num_workers=4,
                                collate_fn=custom_collate_fn)
