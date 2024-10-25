@@ -67,7 +67,7 @@ def train(args):
     
     # ,sampler=sampler
     train_dataset = DataLoader(voc,
-                               batch_size=8,
+                               batch_size=1,
                                shuffle=True,
                                num_workers=2
                            
