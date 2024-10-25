@@ -1,6 +1,6 @@
 dataset_params:
-  im_train_path: '../../../../cloe/train_dataset/JPEGImages'
-  ann_train_path: '../../../../cloe/train_dataset/Annotations'
+  im_train_path: '../../../../cloe/train_dataset/JPEGImages1000'
+  ann_train_path: '../../../../cloe/train_dataset/Annotations1000'
   im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImages'
   ann_test_path: '../../../../cloe/test_dataset_1_2/Annotations'
   num_classes : 2 # number_classes + background
