@@ -149,8 +149,7 @@ class VOCDataset(Dataset):
         to_flip = False
         if self.split == 'train' and random.random() < 0.5:
             to_flip = True
-            #im = np.flip(im, axis=1).copy() 
-            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+            rgbd_tensor = self.flip_rgbd_image(rgbd_tensor)
 
         im_tensor = torchvision.transforms.ToTensor()(im)
         targets = {}
@@ -164,5 +163,5 @@ class VOCDataset(Dataset):
                 x1 = im_w - x1 - w
                 x2 = x1 + w
                 targets['bboxes'][idx] = torch.as_tensor([x1, y1, x2, y2])
-        return im_tensor, targets, im_info['filename']
+        return rgbd_tensor, targets, im_info['filename']
         

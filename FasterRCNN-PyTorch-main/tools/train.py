@@ -57,10 +57,10 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=dataset_config['depth_path'])
     train_dataset = DataLoader(voc,
-                               batch_size=32,
+                               batch_size=1,
                                shuffle=True,
                                num_workers=4,
-                               )
+                               ) 
     
     faster_rcnn_model = FasterRCNN(model_config,
                                    num_classes=dataset_config['num_classes'])
