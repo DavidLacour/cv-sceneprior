@@ -40,7 +40,8 @@ def train(args):
     
     voc = VOCDataset('train',
                      im_dir=dataset_config['im_train_path'],
-                     ann_dir=dataset_config['ann_train_path'])
+                     ann_dir=dataset_config['ann_train_path'],
+                     depth_dir=['depth_path'])
     train_dataset = DataLoader(voc,
                                batch_size=1,
                                shuffle=True,
