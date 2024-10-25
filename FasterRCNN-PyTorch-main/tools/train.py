@@ -15,7 +15,7 @@ from torch.utils.data import  Sampler
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
 
-num_samples_per_epoch = 1000  # Number of random images to use in each epoch
+#num_samples_per_epoch = 1000  # Number of random images to use in each epoch
 
 # Custom sampler for randomly selecting images in each epoch
 class SubsetRandomSampler(Sampler):
@@ -61,16 +61,17 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'])
     
 
-    total_samples = len(train_dataset)
-    num_samples_per_epoch = 1000
-    sampler = SubsetRandomSampler(total_samples, num_samples_per_epoch)
+    #total_samples = len(train_dataset)
+    #num_samples_per_epoch = 1000
+    #sampler = SubsetRandomSampler(total_samples, num_samples_per_epoch)
     
-
+    # ,sampler=sampler
     train_dataset = DataLoader(voc,
                                batch_size=8,
                                shuffle=True,
                                num_workers=2
-                               ,sampler=sampler)
+                           
+                               )
     
     faster_rcnn_model = FasterRCNN(model_config,
                                    num_classes=dataset_config['num_classes'])
