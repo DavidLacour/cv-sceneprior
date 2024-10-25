@@ -13,6 +13,20 @@ from torch.optim.lr_scheduler import MultiStepLR
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
+# predefined collate doesn't work with different size 
+def custom_collate_fn(batch):
+    images = []
+    targets = []
+    fnames = []
+    
+    for image, target, fname in batch:
+        images.append(image)
+        targets.append(target)
+        fnames.append(fname)
+        
+    return images, targets, fnames
+
+
 def train(args):
     # Read the config file #
     with open(args.config_path, 'r') as file:
@@ -43,9 +57,10 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=['depth_path'])
     train_dataset = DataLoader(voc,
-                               batch_size=1,
+                               batch_size=2,
                                shuffle=True,
-                               num_workers=4)
+                               num_workers=4,
+                               collate_fn=custom_collate_fn)
     
     faster_rcnn_model = FasterRCNN(model_config,
                                    num_classes=dataset_config['num_classes'])
