@@ -9,7 +9,7 @@ from tqdm import tqdm
 from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
-from torch.utils.data import  Sampler
+from torch.utils.data import Sampler
 from torch.utils.tensorboard import SummaryWriter
 import time
 from datetime import datetime
@@ -17,25 +17,18 @@ import shutil
 import zipfile
 from tools.infer import evaluate_map
 
-#not defined correctly on colab sometimes
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-#num_samples_per_epoch = 1000  # Number of random images to use in each epoch
-
-# Custom sampler for randomly selecting images in each epoch
 class SubsetRandomSampler(Sampler):
     def __init__(self, dataset_size, num_samples):
         self.dataset_size = dataset_size
         self.num_samples = min(num_samples, dataset_size)
 
     def __iter__(self):
-        # Randomly select a subset of indices for each epoch
         return iter(random.sample(range(self.dataset_size), self.num_samples))
 
     def __len__(self):
         return self.num_samples
-    
 
 def zip_logs(log_dir, output_path):
     """
@@ -47,6 +40,28 @@ def zip_logs(log_dir, output_path):
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, os.path.dirname(log_dir))
                 zipf.write(file_path, arcname)
+
+class EarlyStopping:
+    def __init__(self, patience=10, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_map = None
+        self.early_stop = False
+        self.best_epoch = 0
+
+    def __call__(self, map_score, epoch):
+        if self.best_map is None:
+            self.best_map = map_score
+            self.best_epoch = epoch
+        elif map_score < self.best_map + self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_map = map_score
+            self.best_epoch = epoch
+            self.counter = 0
 
 def train(args):
     # Read the config file
@@ -69,17 +84,18 @@ def train(args):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     run_name = f"run_{timestamp}"
     
-    # Initialize TensorBoard writer with specific run directory
+    # Initialize TensorBoard writer and early stopping
     log_dir = os.path.join(train_config['task_name'], 'logs', run_name)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
-    # Save config file in the log directory for reference
+    
+    # Save config file
     config_save_path = os.path.join(log_dir, 'config.yaml')
     with open(config_save_path, 'w') as f:
         yaml.dump(config, f)
     
     writer = SummaryWriter(log_dir)
+    early_stopping = EarlyStopping(patience=10)  # Initialize early stopping
     
     seed = train_config['seed']
     torch.manual_seed(seed)
@@ -126,6 +142,7 @@ def train(args):
     step_count = 1
     global_step = 0
     training_start_time = time.time()
+    best_model_path = None
 
     try:
         for epoch in range(num_epochs):
@@ -146,26 +163,11 @@ def train(args):
                 frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
                 loss = rpn_loss + frcnn_loss
                 
-                # Log individual losses
-                rpn_cls_loss = rpn_output['rpn_classification_loss'].item()
-                rpn_loc_loss = rpn_output['rpn_localization_loss'].item()
-                frcnn_cls_loss = frcnn_output['frcnn_classification_loss'].item()
-                frcnn_loc_loss = frcnn_output['frcnn_localization_loss'].item()
-                total_loss = loss.item()
-
-                rpn_classification_losses.append(rpn_cls_loss)
-                rpn_localization_losses.append(rpn_loc_loss)
-                frcnn_classification_losses.append(frcnn_cls_loss)
-                frcnn_localization_losses.append(frcnn_loc_loss)
-
-                # Log to TensorBoard
-                writer.add_scalar('Loss/Step/RPN_Classification', rpn_cls_loss, global_step)
-                writer.add_scalar('Loss/Step/RPN_Localization', rpn_loc_loss, global_step)
-                writer.add_scalar('Loss/Step/FRCNN_Classification', frcnn_cls_loss, global_step)
-                writer.add_scalar('Loss/Step/FRCNN_Localization', frcnn_loc_loss, global_step)
-                writer.add_scalar('Loss/Step/Total', total_loss, global_step)
-                writer.add_scalar('Training/Learning_Rate', optimizer.param_groups[0]['lr'], global_step)
-        
+                # Accumulate losses for epoch-level logging
+                rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
+                rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
+                frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
+                frcnn_localization_losses.append(frcnn_output['frcnn_localization_loss'].item())
 
                 loss = loss / acc_steps
                 loss.backward()
@@ -178,18 +180,7 @@ def train(args):
             epoch_time = time.time() - epoch_start_time
             print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
             
-            # Save model checkpoint
-            checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': faster_rcnn_model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
-                'global_step': global_step,
-                'config': config
-            }, checkpoint_path)
-
-            # Log epoch metrics
+            # Calculate and log epoch metrics
             epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
             epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
             epoch_frcnn_cls_loss = np.mean(frcnn_classification_losses)
@@ -200,8 +191,29 @@ def train(args):
             writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
-            map = evaluate_map(args)
-            writer.add_scalar('map',map,epoch)
+            
+            # Evaluate mAP and handle early stopping
+            map_score = evaluate_map(args)
+            writer.add_scalar('map', map_score, epoch)
+            early_stopping(map_score, epoch)
+            
+            # Save checkpoint
+            checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': faster_rcnn_model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'global_step': global_step,
+                'map_score': map_score,
+                'config': config
+            }, checkpoint_path)
+            
+            # Update best model path if this is the best mAP
+            if early_stopping.best_epoch == epoch:
+                if best_model_path and os.path.exists(best_model_path):
+                    os.remove(best_model_path)
+                best_model_path = checkpoint_path
             
             # Update training info file
             with open(train_info_path, 'a') as f:
@@ -211,31 +223,32 @@ def train(args):
                 f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
                 f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
                 f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
-                f.write(f"  FRCNN map: {map:.4f}\n")
+                f.write(f"  mAP: {map_score:.4f}\n")
+            
             scheduler.step()
+            
+            # Check for early stopping
+            if early_stopping.early_stop:
+                print(f"Early stopping triggered at epoch {epoch}. Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+                break
 
     except Exception as e:
         print(f"Training interrupted: {str(e)}")
     finally:
-        # Ensure we close the writer and save logs
         writer.close()
         
         # Calculate total training time
         total_time = time.time() - training_start_time
         with open(train_info_path, 'a') as f:
             f.write(f"\nTotal training time: {total_time:.2f}s\n")
+            f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
         
         # Create zip file of logs
         logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
         zip_logs(log_dir, logs_zip_path)
         print(f"\nTensorBoard logs saved to: {logs_zip_path}")
-        
-        print("\nTo view these logs later:")
-        print("1. Download the zip file from Colab")
-        print("2. Extract it locally")
-        print("3. Run: tensorboard --logdir=path_to_extracted_folder")
-        print("4. Open http://localhost:6006 in your browser")
-
+        print(f"Best model saved at: {best_model_path}")
+        print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for faster rcnn training')
