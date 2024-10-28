@@ -165,8 +165,7 @@ def train(args):
                 writer.add_scalar('Loss/Step/FRCNN_Localization', frcnn_loc_loss, global_step)
                 writer.add_scalar('Loss/Step/Total', total_loss, global_step)
                 writer.add_scalar('Training/Learning_Rate', optimizer.param_groups[0]['lr'], global_step)
-                map = evaluate_map(args)
-                writer.add_scalar('map',map,global_step)
+        
 
                 loss = loss / acc_steps
                 loss.backward()
