@@ -163,6 +163,7 @@ def load_model_and_dataset(args):
     dataset_config = config['dataset_params']
     model_config = config['model_params']
     train_config = config['train_params']
+    depth_dir=dataset_config['depth_path']
     
     seed = train_config['seed']
     torch.manual_seed(seed)
@@ -173,7 +174,7 @@ def load_model_and_dataset(args):
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
     
-    voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'])
+    voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'],  depth_dir= depth_dir )
     test_dataset = DataLoader(voc, batch_size=1, shuffle=False)
     
     faster_rcnn_model = FasterRCNN(model_config, num_classes=dataset_config['num_classes'])
@@ -203,8 +204,12 @@ def infer(args):
         im = im.unsqueeze(0).float().to(device)
         
         
-        gt_im = np.load(fname, allow_pickle=True)
+        # gt_im =  np.load(fname, allow_pickle=True)
+        #gt_im = Image.open(image_path)
+        #gt_im_copy = gt_im.copy()
+        gt_im = cv2.imread(fname)
         gt_im_copy = gt_im.copy()
+        
         
         # Saving images with ground truth boxes
         for idx, box in enumerate(target['bboxes']):
@@ -237,8 +242,10 @@ def infer(args):
         boxes = frcnn_output['boxes']
         labels = frcnn_output['labels']
         scores = frcnn_output['scores']
-        im = np.load(fname, allow_pickle=True)
-        im_copy = im.copy()
+        #im = np.load(fname, allow_pickle=True)
+        #im_copy = im.copy()
+        im = cv2.imread(fname)
+        im_copy = gt_im.copy()
         
         # Saving images with predicted boxes
         for idx, box in enumerate(boxes):
