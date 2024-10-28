@@ -197,7 +197,7 @@ def train(args):
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
             
             # Evaluate mAP and handle early stopping
-            map_score = evaluate_map(args)
+            map_score = evaluate_map(args,val=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
             
