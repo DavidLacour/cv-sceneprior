@@ -212,7 +212,7 @@ def train(args):
                 f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
                 f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
                 f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
-                f.write(f"  FRCNN Localization: {map:.4f}\n")
+                f.write(f"  FRCNN map: {map:.4f}\n")
             scheduler.step()
 
     except Exception as e:
