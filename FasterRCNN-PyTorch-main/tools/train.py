@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 import shutil
 import zipfile
-import tools.infer 
+from tools.infer import evaluate_map
 
 #not defined correctly on colab sometimes
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
@@ -165,7 +165,7 @@ def train(args):
                 writer.add_scalar('Loss/Step/FRCNN_Localization', frcnn_loc_loss, global_step)
                 writer.add_scalar('Loss/Step/Total', total_loss, global_step)
                 writer.add_scalar('Training/Learning_Rate', optimizer.param_groups[0]['lr'], global_step)
-                map = infer.evaluate_map(args)
+                map = evaluate_map(args)
                 writer.add_scalar('map',map,global_step)
 
                 loss = loss / acc_steps
@@ -201,7 +201,7 @@ def train(args):
             writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
-            map = infer.evaluate_map(args)
+            map = evaluate_map(args)
             writer.add_scalar('map',map,epoch)
             
             # Update training info file
