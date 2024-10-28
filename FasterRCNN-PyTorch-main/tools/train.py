@@ -10,6 +10,7 @@ from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.data import  Sampler
+from torch.utils.tensorboard import SummaryWriter
 import time
 from datetime import datetime
 import shutil
@@ -33,6 +34,18 @@ class SubsetRandomSampler(Sampler):
 
     def __len__(self):
         return self.num_samples
+    
+
+def zip_logs(log_dir, output_path):
+    """
+    Create a zip file of the tensorboard logs
+    """
+    with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(log_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, os.path.dirname(log_dir))
+                zipf.write(file_path, arcname)
 
 def train(args):
     # Read the config file
