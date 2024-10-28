@@ -9,6 +9,12 @@ from tqdm import tqdm
 from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
+from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
+import shutil
+import zipfile
+import time
+from tools.infer import evaluate_map
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -120,7 +126,7 @@ def train(args):
     faster_rcnn_model.to(device)
 
     if not os.path.exists(train_config['task_name']):
-        os.mkdir(train_config['task_name'])
+        os.mkdirs(train_config['task_name'])
     optimizer = torch.optim.SGD(lr=train_config['lr'],
                                 params=filter(lambda p: p.requires_grad,
                                               faster_rcnn_model.parameters()),
@@ -139,7 +145,6 @@ def train(args):
 
     acc_steps = train_config['acc_steps']
     num_epochs = train_config['num_epochs']
-    step_count = 1
     step_count = 1
     global_step = 0
     training_start_time = time.time()
@@ -231,7 +236,7 @@ def train(args):
                 print(f"Early stopping triggered at epoch {epoch}. Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
                 break
         
-     except Exception as e:
+    except Exception as e:
         print(f"Training interrupted: {str(e)}")
     finally:
         writer.close()
