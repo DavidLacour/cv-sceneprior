@@ -31,23 +31,36 @@ class SubsetRandomSampler(Sampler):
         return self.num_samples
 
 def train(args):
-
-    #not defined correctly on colab sometimes
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
-    # Read the config file #
+    # Read the config file
     with open(args.config_path, 'r') as file:
         try:
             config = yaml.safe_load(file)
         except yaml.YAMLError as exc:
             print(exc)
     print(config)
-    ########################
+
     if args.forcecpu:
         device = torch.device('cpu')
     
     dataset_config = config['dataset_params']
     model_config = config['model_params']
     train_config = config['train_params']
+    
+    # Create unique run name with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_name = f"run_{timestamp}"
+    
+    # Initialize TensorBoard writer with specific run directory
+    log_dir = os.path.join(train_config['task_name'], 'logs', run_name)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        
+    # Save config file in the log directory for reference
+    config_save_path = os.path.join(log_dir, 'config.yaml')
+    with open(config_save_path, 'w') as f:
+        yaml.dump(config, f)
+    
+    writer = SummaryWriter(log_dir)
     
     seed = train_config['seed']
     torch.manual_seed(seed)
@@ -60,77 +73,146 @@ def train(args):
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'])
     
-
-    #total_samples = len(train_dataset)
-    #num_samples_per_epoch = 1000
-    #sampler = SubsetRandomSampler(total_samples, num_samples_per_epoch)
-    
-    # ,sampler=sampler
     train_dataset = DataLoader(voc,
-                               batch_size=1,
-                               shuffle=True,
-                               num_workers=2
-                           
-                               )
+                             batch_size=1,
+                             shuffle=True,
+                             num_workers=2)
     
     faster_rcnn_model = FasterRCNN(model_config,
-                                   num_classes=dataset_config['num_classes'])
+                                  num_classes=dataset_config['num_classes'])
     faster_rcnn_model.train()
     faster_rcnn_model.to(device)
 
     if not os.path.exists(train_config['task_name']):
-        os.mkdir(train_config['task_name'])
+        os.makedirs(train_config['task_name'])
+    
     optimizer = torch.optim.SGD(lr=train_config['lr'],
-                                params=filter(lambda p: p.requires_grad,
-                                              faster_rcnn_model.parameters()),
-                                weight_decay=5E-4,
-                                momentum=0.9)
+                               params=filter(lambda p: p.requires_grad,
+                                          faster_rcnn_model.parameters()),
+                               weight_decay=5E-4,
+                               momentum=0.9)
     scheduler = MultiStepLR(optimizer, milestones=train_config['lr_steps'], gamma=0.1)
+    
+    # Create a training info file
+    train_info_path = os.path.join(log_dir, 'training_info.txt')
+    with open(train_info_path, 'w') as f:
+        f.write(f"Training started at: {timestamp}\n")
+        f.write(f"Device: {device}\n")
+        f.write(f"Number of epochs: {train_config['num_epochs']}\n")
+        f.write(f"Learning rate: {train_config['lr']}\n")
+        f.write(f"Dataset size: {len(voc)}\n")
     
     acc_steps = train_config['acc_steps']
     num_epochs = train_config['num_epochs']
     step_count = 1
+    global_step = 0
+    training_start_time = time.time()
 
-    for i in range(num_epochs):
-        rpn_classification_losses = []
-        rpn_localization_losses = []
-        frcnn_classification_losses = []
-        frcnn_localization_losses = []
-        optimizer.zero_grad()
+    try:
+        for epoch in range(num_epochs):
+            epoch_start_time = time.time()
+            rpn_classification_losses = []
+            rpn_localization_losses = []
+            frcnn_classification_losses = []
+            frcnn_localization_losses = []
+            optimizer.zero_grad()
+            
+            for im, target, fname in tqdm(train_dataset):
+                im = im.float().to(device)
+                target['bboxes'] = target['bboxes'].float().to(device)
+                target['labels'] = target['labels'].long().to(device)
+                rpn_output, frcnn_output = faster_rcnn_model(im, target)
+                
+                rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
+                frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
+                loss = rpn_loss + frcnn_loss
+                
+                # Log individual losses
+                rpn_cls_loss = rpn_output['rpn_classification_loss'].item()
+                rpn_loc_loss = rpn_output['rpn_localization_loss'].item()
+                frcnn_cls_loss = frcnn_output['frcnn_classification_loss'].item()
+                frcnn_loc_loss = frcnn_output['frcnn_localization_loss'].item()
+                total_loss = loss.item()
+
+                rpn_classification_losses.append(rpn_cls_loss)
+                rpn_localization_losses.append(rpn_loc_loss)
+                frcnn_classification_losses.append(frcnn_cls_loss)
+                frcnn_localization_losses.append(frcnn_loc_loss)
+
+                # Log to TensorBoard
+                writer.add_scalar('Loss/Step/RPN_Classification', rpn_cls_loss, global_step)
+                writer.add_scalar('Loss/Step/RPN_Localization', rpn_loc_loss, global_step)
+                writer.add_scalar('Loss/Step/FRCNN_Classification', frcnn_cls_loss, global_step)
+                writer.add_scalar('Loss/Step/FRCNN_Localization', frcnn_loc_loss, global_step)
+                writer.add_scalar('Loss/Step/Total', total_loss, global_step)
+                writer.add_scalar('Training/Learning_Rate', optimizer.param_groups[0]['lr'], global_step)
+
+                loss = loss / acc_steps
+                loss.backward()
+                if step_count % acc_steps == 0:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                step_count += 1
+                global_step += 1
+
+            epoch_time = time.time() - epoch_start_time
+            print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
+            
+            # Save model checkpoint
+            checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': faster_rcnn_model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'global_step': global_step,
+                'config': config
+            }, checkpoint_path)
+
+            # Log epoch metrics
+            epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
+            epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
+            epoch_frcnn_cls_loss = np.mean(frcnn_classification_losses)
+            epoch_frcnn_loc_loss = np.mean(frcnn_localization_losses)
+            
+            writer.add_scalar('Loss/Epoch/RPN_Classification', epoch_rpn_cls_loss, epoch)
+            writer.add_scalar('Loss/Epoch/RPN_Localization', epoch_rpn_loc_loss, epoch)
+            writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
+            writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
+            writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
+            
+            # Update training info file
+            with open(train_info_path, 'a') as f:
+                f.write(f"\nEpoch {epoch} completed in {epoch_time:.2f}s\n")
+                f.write(f"Average losses:\n")
+                f.write(f"  RPN Classification: {epoch_rpn_cls_loss:.4f}\n")
+                f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
+                f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
+                f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
+            
+            scheduler.step()
+
+    except Exception as e:
+        print(f"Training interrupted: {str(e)}")
+    finally:
+        # Ensure we close the writer and save logs
+        writer.close()
         
-        for im, target, fname in tqdm(train_dataset):
-            im = im.float().to(device)
-            target['bboxes'] = target['bboxes'].float().to(device)
-            target['labels'] = target['labels'].long().to(device)
-            rpn_output, frcnn_output = faster_rcnn_model(im, target)
-            
-            rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
-            frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
-            loss = rpn_loss + frcnn_loss
-            
-            rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
-            rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
-            frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
-            frcnn_localization_losses.append(frcnn_output['frcnn_localization_loss'].item())
-            loss = loss / acc_steps
-            loss.backward()
-            if step_count % acc_steps == 0:
-                optimizer.step()
-                optimizer.zero_grad()
-            step_count += 1
-        print('Finished epoch {}'.format(i))
-        optimizer.step()
-        optimizer.zero_grad()
-        torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
-                                                                train_config['ckpt_name']))
-        loss_output = ''
-        loss_output += 'RPN Classification Loss : {:.4f}'.format(np.mean(rpn_classification_losses))
-        loss_output += ' | RPN Localization Loss : {:.4f}'.format(np.mean(rpn_localization_losses))
-        loss_output += ' | FRCNN Classification Loss : {:.4f}'.format(np.mean(frcnn_classification_losses))
-        loss_output += ' | FRCNN Localization Loss : {:.4f}'.format(np.mean(frcnn_localization_losses))
-        print(loss_output)
-        scheduler.step()
-    print('Done Training...')
+        # Calculate total training time
+        total_time = time.time() - training_start_time
+        with open(train_info_path, 'a') as f:
+            f.write(f"\nTotal training time: {total_time:.2f}s\n")
+        
+        # Create zip file of logs
+        logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
+        zip_logs(log_dir, logs_zip_path)
+        print(f"\nTensorBoard logs saved to: {logs_zip_path}")
+        
+        print("\nTo view these logs later:")
+        print("1. Download the zip file from Colab")
+        print("2. Extract it locally")
+        print("3. Run: tensorboard --logdir=path_to_extracted_folder")
+        print("4. Open http://localhost:6006 in your browser")
 
 
 if __name__ == '__main__':
