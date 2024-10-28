@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 import shutil
 import zipfile
-import infer 
+import tools.infer 
 
 #not defined correctly on colab sometimes
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
