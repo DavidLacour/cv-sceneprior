@@ -49,6 +49,7 @@ def zip_logs(log_dir, output_path):
 
 def train(args):
     # Read the config file
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
     with open(args.config_path, 'r') as file:
         try:
             config = yaml.safe_load(file)
