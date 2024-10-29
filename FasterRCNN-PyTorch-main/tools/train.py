@@ -76,6 +76,9 @@ def train(args):
             print(exc)
     print(config)
     ########################
+    task_dir = train_config['task_name']
+    os.makedirs(task_dir, exist_ok=True)
+    os.makedirs(os.path.join(task_dir, 'logs'), exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.forcecpu:
@@ -198,6 +201,11 @@ def train(args):
             
             # Evaluate mAP and handle early stopping
             #save because evaluate map uses the weights 
+            checkpoint_base = os.path.abspath(task_dir)
+            checkpoint_path = os.path.join(checkpoint_base, train_config['ckpt_name'])
+            
+            # When saving the model
+            torch.save(faster_rcnn_model.state_dict(), checkpoint_path)
             torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
                                                                 train_config['ckpt_name']))
             map_score = evaluate_map(args,validation_set=True)
