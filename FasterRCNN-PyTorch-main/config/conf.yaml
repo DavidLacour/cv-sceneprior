@@ -1,6 +1,6 @@
 dataset_params:
   im_train_path: '../../../../cloe/train_dataset/Images'
-  ann_train_path: '../../../../cloe/train_datasetl/Annotations'
+  ann_train_path: '../../../../cloe/train_dataset/Annotations'
   im_test_path: '../../../../cloe/test_dataset_1_2/Images'
   ann_test_path: '../../../../cloe/test_dataset_1_2/Annotations'
   im_val_path: '../../../../cloe/validation_dataset_2_1/Images'
