@@ -83,7 +83,9 @@ def train(args):
     # Create unique run name with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     run_name = f"run_{timestamp}"
-    task_dir = os.path.dirname(train_config['task_name'])
+    task_dir = train_config['task_name']
+    os.makedirs(task_dir, exist_ok=True)
+    os.makedirs(os.path.join(task_dir, 'logs'), exist_ok=True)
     
     # Initialize TensorBoard writer and early stopping
     log_dir = os.path.join(train_config['task_name'], 'logs', run_name)
