@@ -248,14 +248,18 @@ def train(args):
         total_time = time.time() - training_start_time
         with open(train_info_path, 'a') as f:
             f.write(f"\nTotal training time: {total_time:.2f}s\n")
-            f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+            if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+              f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+            else:
+             f.write("No best mAP recorded yet\n")
         
         # Create zip file of logs
         logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
         zip_logs(log_dir, logs_zip_path)
         print(f"\nTensorBoard logs saved to: {logs_zip_path}")
         print(f"Best model saved at: {best_model_path}")
-        print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+        if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+            print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
 
 
 if __name__ == '__main__':
