@@ -76,7 +76,7 @@ def train(args):
             print(exc)
     print(config)
     ########################
-    task_dir = train_config['task_name']
+   
     os.makedirs(task_dir, exist_ok=True)
     os.makedirs(os.path.join(task_dir, 'logs'), exist_ok=True)
 
@@ -94,6 +94,7 @@ def train(args):
     
     # Initialize TensorBoard writer and early stopping
     log_dir = os.path.join(train_config['task_name'], 'logs', run_name)
+    task_dir = train_config['task_name']
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
