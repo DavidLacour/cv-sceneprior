@@ -173,7 +173,7 @@ def load_model_and_dataset(args,validation_set = False):
         device = torch.device('cpu')
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
-    if not val:
+    if not validation_set:
         voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'],  depth_dir= depth_dir )
     else: 
         voc = VOCDataset('test', im_dir=dataset_config['im_val_path'], ann_dir=dataset_config['ann_val_path'],  depth_dir= depth_dir )
