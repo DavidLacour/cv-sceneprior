@@ -5,8 +5,6 @@ dataset_params:
   ann_test_path: '../../../../cloe/test_dataset_1_2/Annotations'
   im_val_path: '../../../../cloe/validation_dataset_2_1/Images'
   ann_val_path: '../../../../cloe/validation_dataset_2_1/Annotations'
-  
-
   depth_path:  '../../../../depthmaps'
   num_classes : 2 # number_classes + background
 
