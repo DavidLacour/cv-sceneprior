@@ -83,6 +83,7 @@ def train(args):
     # Create unique run name with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     run_name = f"run_{timestamp}"
+    task_dir = os.path.dirname(args.task_name)
     
     # Initialize TensorBoard writer and early stopping
     log_dir = os.path.join(train_config['task_name'], 'logs', run_name)
@@ -252,7 +253,10 @@ def train(args):
         zip_logs(log_dir, logs_zip_path)
         print(f"\nTensorBoard logs saved to: {logs_zip_path}")
         print(f"Best model saved at: {best_model_path}")
-        print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+        if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+            f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+        else:
+            f.write("No best mAP recorded yet\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for faster rcnn training')
