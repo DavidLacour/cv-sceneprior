@@ -193,7 +193,11 @@ def train(args):
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
             
             # Evaluate mAP and handle early stopping
-            map_score = evaluate_map(args)
+            # save because evaluae_map use saved weights 
+            model_path = os.path.join(task_dir, train_config['ckpt_name'])
+            torch.save(faster_rcnn_model.state_dict(), model_path)
+          
+            map_score = evaluate_map(args,validation_set=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
             
