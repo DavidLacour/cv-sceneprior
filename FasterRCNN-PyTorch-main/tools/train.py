@@ -259,9 +259,9 @@ def train(args):
         print(f"\nTensorBoard logs saved to: {logs_zip_path}")
         print(f"Best model saved at: {best_model_path}")
         if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
-            f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+            print(f"Best model saved at: {best_model_path}")
         else:
-            f.write("No best mAP recorded yet\n")
+            print("No best mAP recorded yet\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for faster rcnn training')
