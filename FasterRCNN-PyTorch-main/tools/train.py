@@ -256,12 +256,13 @@ def train(args):
         
         # Calculate total training time
         total_time = time.time() - training_start_time
-        with open(train_info_path, 'a') as f:
-            f.write(f"\nTotal training time: {total_time:.2f}s\n")
-            if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
-              f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
-            else:
-             f.write("No best mAP recorded yet\n")
+        if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+            with open(train_info_path, 'a') as f:
+                f.write(f"\nTotal training time: {total_time:.2f}s\n")
+                if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+                    f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+                else:
+                    f.write("No best mAP recorded yet\n")
         
         # Create zip file of logs
         logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
