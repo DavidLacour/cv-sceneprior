@@ -52,6 +52,7 @@ class EarlyStopping:
         self.best_map = None
         self.early_stop = False
         self.best_epoch = 0
+        self.require_save = False
 
     def __call__(self, map_score, epoch):
         if self.best_map is None:
@@ -61,13 +62,15 @@ class EarlyStopping:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
+            self.require_save = False
         else:
             self.best_map = map_score
             self.best_epoch = epoch
             self.counter = 0
+            self.require_save = True
 
 def save_final_state(writer, train_info_path, best_model_path, train_config, 
-                    early_stopping, training_start_time, timestamp, log_dir):
+                    early_stopping, training_start_time, timestamp, log_dir, best_weights_path):
     """
     Save final training state, logs, and best model
     """
@@ -84,6 +87,7 @@ def save_final_state(writer, train_info_path, best_model_path, train_config,
             f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
             
         # Copy the best model weights only (not full checkpoint)
+        """
         if best_model_path and os.path.exists(best_model_path):
             try:
                 # Load the checkpoint
@@ -101,11 +105,16 @@ def save_final_state(writer, train_info_path, best_model_path, train_config,
                 
             except Exception as e:
                 print(f"Error saving best model weights: {str(e)}")
-                
-    else:
-        with open(train_info_path, 'a') as f:
-            f.write(f"\nTotal training time: {total_time:.2f}s\n")
+                    
+        else:
+            with open(train_info_path, 'a') as f:
+                f.write(f"\nTotal training time: {total_time:.2f}s\n")
             f.write("No best mAP recorded yet\n")
+        """
+        
+        shutil.copy(best_weights_path, os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name']))
     
     # Create zip file of logs
     logs_zip_path = os.path.join(train_config['task_name'], 
@@ -267,6 +276,13 @@ def train(args):
             map_score = evaluate_map(args,validation_set=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
+            best_weights_path = os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name'] + "best"
+                )
+            if early_stopping.require_save:
+                 torch.save(faster_rcnn_model.state_dict(), best_weights_path)
+
             
             # Save checkpoint
             checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
@@ -314,7 +330,8 @@ def train(args):
         early_stopping=early_stopping,
         training_start_time=training_start_time,
         timestamp=timestamp,
-        log_dir=log_dir
+        log_dir=log_dir,
+        best_weights_path
     )
 
 
