@@ -144,7 +144,7 @@ class VOCDataset(Dataset):
                 im_info['depthfilename']
             )
         except Exception as e:
-            print(f"Error loading images: {e}")
+            print(f"Error loading images werhzwr4thwh: {e}")
             print(f"Image path: {im_info['filename']}")
             print(f"Depth path: {im_info['depthfilename']}")
             raise e
