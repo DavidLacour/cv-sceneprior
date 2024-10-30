@@ -321,6 +321,7 @@ def evaluate_map(args,validation_set = False):
     for idx in range(len(voc.idx2label)):
         print('AP for class {} = {:.4f}'.format(voc.idx2label[idx], all_aps[voc.idx2label[idx]]))
     print('Mean Average Precision : {:.4f}'.format(mean_ap))
+    return mean_ap
 
 
 if __name__ == '__main__':
