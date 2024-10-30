@@ -122,7 +122,7 @@ def train(args):
     train_dataset = DataLoader(voc,
                                batch_size=1,
                                shuffle=True,
-                               num_workers=4,
+                               num_workers=2,
                                ) 
     
     faster_rcnn_model = FasterRCNN(model_config,

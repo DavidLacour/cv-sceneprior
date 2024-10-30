@@ -1,7 +1,7 @@
 import glob
 import os
 import random
-
+import cv2
 import torch
 import torchvision
 from PIL import Image
@@ -96,7 +96,8 @@ class VOCDataset(Dataset):
         Returns:
             torch.Tensor: Combined RGBD tensor with shape (4, H, W)
         """
-        rgb_image = Image.open(image_path)
+        #rgb_image = Image.open(image_path)
+        rgb_image = cv2.imread(image_path)
         rgb_tensor = torchvision.transforms.ToTensor()(rgb_image)
         
     
