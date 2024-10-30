@@ -26,7 +26,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         im_info = {}
         im_info['img_id'] = os.path.basename(ann_file).split('.xml')[0]
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
-        
+
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
         depth_filename = f"{camera_name}_undistorted_depth.npy"
         depth_path = os.path.join(depth_dir, depth_filename)
@@ -132,10 +132,12 @@ class VOCDataset(Dataset):
         return torch.flip(rgbd_tensor, dims=[2])
     
     def __getitem__(self, index):
-        im_info = self.images_info[index]
-        im = Image.open(im_info['filename'])
-
         try:
+            im_info = self.images_info[index]
+            im = cv2.imread(im_info['filename'])
+            #im = Image.open(im_info['filename'])
+
+       
             rgbd_tensor, image_size = self.load_image_with_depth(
                 im_info['filename'],
                 im_info['depthfilename']
