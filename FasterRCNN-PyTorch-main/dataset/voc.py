@@ -132,13 +132,13 @@ class VOCDataset(Dataset):
         return torch.flip(rgbd_tensor, dims=[2])
     
     def __getitem__(self, index):
-        try:
-            im_info = self.images_info[index]
-            im = Image.open(im_info['filename'])
-            #im = cv2.imread(im_info['filename'])
-            #im = Image.open(im_info['filename'])
-
        
+        im_info = self.images_info[index]
+        im = Image.open(im_info['filename'])
+        #im = cv2.imread(im_info['filename'])
+        #im = Image.open(im_info['filename'])
+
+         try:
             rgbd_tensor, image_size = self.load_image_with_depth(
                 im_info['filename'],
                 im_info['depthfilename']
