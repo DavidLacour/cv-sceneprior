@@ -1,6 +1,6 @@
 dataset_params:
-  im_train_path: '../../../../cloe/train_dataset/JPEGImages1000'
-  ann_train_path: '../../../../cloe/train_dataset/Annotations1000'
+  im_train_path: '../../../../cloe/train_dataset/JPEGImages1000Short'
+  ann_train_path: '../../../../cloe/train_dataset/Annotations1000Short'
   im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImagesShort'
   ann_test_path: '../../../../cloe/test_dataset_1_2/AnnotationsShort'
   im_val_path: '../../../../cloe/validation_dataset_2_1/JPEGImagesShort'
@@ -38,7 +38,7 @@ train_params:
   task_name: '../../task_cams'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
-  num_epochs: 2
+  num_epochs: 100
   lr_steps : [12, 16]
   lr: 0.001
   ckpt_name: 'cloe.pth'
