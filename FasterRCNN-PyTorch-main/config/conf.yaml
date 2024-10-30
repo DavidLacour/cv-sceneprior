@@ -1,10 +1,10 @@
 dataset_params:
-  im_train_path: '../../../../cloe/train_dataset/JPEGImagesShort'
-  ann_train_path: '../../../../cloe/train_dataset/AnnotationsShort'
-  im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImagesShort'
-  ann_test_path: '../../../../cloe/test_dataset_1_2/AnnotationsShort'
-  im_val_path: '../../../../cloe/validation_dataset_2_1/JPEGImagesShort'
-  ann_val_path: '../../../../cloe/validation_dataset_2_1/AnnotationsShort'
+  im_train_path: '../../../../cloe/train_dataset/JPEGImages'
+  ann_train_path: '../../../../cloe/train_dataset/Annotations'
+  im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImages'
+  ann_test_path: '../../../../cloe/test_dataset_1_2/Annotations'
+  im_val_path: '../../../../cloe/validation_dataset_2_1/JPEGImages'
+  ann_val_path: '../../../../cloe/validation_dataset_2_1/Annotations'
   depth_path:  '../../../../depthmaps'
   num_classes : 2 # number_classes + background
 
@@ -38,7 +38,7 @@ train_params:
   task_name: '../../task_cams'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
-  num_epochs: 100
+  num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
   ckpt_name: 'cloe.pth'

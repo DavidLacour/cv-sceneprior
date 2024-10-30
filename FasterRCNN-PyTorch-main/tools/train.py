@@ -115,6 +115,9 @@ def save_final_state(best_weights_path,writer, train_info_path, best_model_path,
         shutil.copy(best_weights_path, os.path.join(
                     train_config['task_name'],
                     train_config['ckpt_name']))
+        print(f"Best model weigths at : {os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name'])}")
     
     # Create zip file of logs
     logs_zip_path = os.path.join(train_config['task_name'], 
