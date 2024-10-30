@@ -69,8 +69,8 @@ class EarlyStopping:
             self.counter = 0
             self.require_save = True
 
-def save_final_state(writer, train_info_path, best_model_path, train_config, 
-                    early_stopping, training_start_time, timestamp, log_dir, best_weights_path):
+def save_final_state(best_weights_path,writer, train_info_path, best_model_path, train_config, 
+                    early_stopping, training_start_time, timestamp, log_dir):
     """
     Save final training state, logs, and best model
     """
@@ -322,7 +322,7 @@ def train(args):
     except Exception as e:
         print(f"Training interrupted: {str(e)}")
     finally:
-         save_final_state(
+         save_final_state( best_weights_path ,
         writer=writer,
         train_info_path=train_info_path,
         best_model_path=best_model_path,
@@ -331,7 +331,7 @@ def train(args):
         training_start_time=training_start_time,
         timestamp=timestamp,
         log_dir=log_dir,
-        best_weights_path
+    
     )
 
 
