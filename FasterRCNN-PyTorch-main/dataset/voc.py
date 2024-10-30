@@ -96,8 +96,8 @@ class VOCDataset(Dataset):
         Returns:
             torch.Tensor: Combined RGBD tensor with shape (4, H, W)
         """
-        #rgb_image = Image.open(image_path)
-        rgb_image = cv2.imread(image_path)
+        rgb_image = Image.open(image_path)
+        #rgb_image = cv2.imread(image_path)
         rgb_tensor = torchvision.transforms.ToTensor()(rgb_image)
         
     
@@ -134,7 +134,8 @@ class VOCDataset(Dataset):
     def __getitem__(self, index):
         try:
             im_info = self.images_info[index]
-            im = cv2.imread(im_info['filename'])
+            im = Image.open(im_info['filename'])
+            #im = cv2.imread(im_info['filename'])
             #im = Image.open(im_info['filename'])
 
        
