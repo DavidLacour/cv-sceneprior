@@ -281,7 +281,7 @@ def evaluate_map(args,validation_set = False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.forcecpu:
         device = torch.device('cpu')
-    faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args)
+    faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args,validation_set=validation_set)
     gts = []
     preds = []
     for im, target, fname in tqdm(test_dataset):
