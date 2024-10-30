@@ -66,6 +66,59 @@ class EarlyStopping:
             self.best_epoch = epoch
             self.counter = 0
 
+def save_final_state(writer, train_info_path, best_model_path, train_config, 
+                    early_stopping, training_start_time, timestamp, log_dir):
+    """
+    Save final training state, logs, and best model
+    """
+    # Close tensorboard writer
+    writer.close()
+    
+    # Calculate total training time
+    total_time = time.time() - training_start_time
+    
+    if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+        # Save training summary
+        with open(train_info_path, 'a') as f:
+            f.write(f"\nTotal training time: {total_time:.2f}s\n")
+            f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+            
+        # Copy the best model weights only (not full checkpoint)
+        if best_model_path and os.path.exists(best_model_path):
+            try:
+                # Load the checkpoint
+                checkpoint = torch.load(best_model_path)
+                model_state_dict = checkpoint['model_state_dict']
+                
+                # Save just the model state dict
+                best_model_final_path = os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name']
+                )
+                os.makedirs(os.path.dirname(best_model_final_path), exist_ok=True)
+                torch.save(model_state_dict, best_model_final_path)
+                print(f"Best model weights saved to: {best_model_final_path}")
+                
+            except Exception as e:
+                print(f"Error saving best model weights: {str(e)}")
+                
+    else:
+        with open(train_info_path, 'a') as f:
+            f.write(f"\nTotal training time: {total_time:.2f}s\n")
+            f.write("No best mAP recorded yet\n")
+    
+    # Create zip file of logs
+    logs_zip_path = os.path.join(train_config['task_name'], 
+                                f'tensorboard_logs_{timestamp}.zip')
+    zip_logs(log_dir, logs_zip_path)
+    print(f"\nTensorBoard logs saved to: {logs_zip_path}")
+    
+    # Print final training status
+    print(f"Best model checkpoint at: {best_model_path}")
+    if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+        print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+
+
 
 def train(args):
     # Read the config file #
@@ -253,36 +306,16 @@ def train(args):
     except Exception as e:
         print(f"Training interrupted: {str(e)}")
     finally:
-        writer.close()
-        
-        # Calculate total training time
-        total_time = time.time() - training_start_time
-        if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
-            # Save training summary
-            with open(train_info_path, 'a') as f:
-                f.write(f"\nTotal training time: {total_time:.2f}s\n")
-                f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
-                
-            # Copy the best model using the specified naming convention
-            if best_model_path and os.path.exists(best_model_path):
-                best_model_final_path = os.path.join(
-                    train_config['task_name'],
-                    train_config['ckpt_name']
-                )
-                shutil.copy2(best_model_path, best_model_final_path)
-                print(f"Best model copied to: {best_model_final_path}")
-        else:
-            with open(train_info_path, 'a') as f:
-                f.write(f"\nTotal training time: {total_time:.2f}s\n")
-                f.write("No best mAP recorded yet\n")
-        
-        # Create zip file of logs
-        logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
-        zip_logs(log_dir, logs_zip_path)
-        print(f"\nTensorBoard logs saved to: {logs_zip_path}")
-        print(f"Best model saved at: {best_model_path}")
-        if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
-            print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+         save_final_state(
+        writer=writer,
+        train_info_path=train_info_path,
+        best_model_path=best_model_path,
+        train_config=train_config,
+        early_stopping=early_stopping,
+        training_start_time=training_start_time,
+        timestamp=timestamp,
+        log_dir=log_dir
+    )
 
 
 if __name__ == '__main__':
