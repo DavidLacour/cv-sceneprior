@@ -208,8 +208,9 @@ def train(args):
             
             # When saving the model
             torch.save(faster_rcnn_model.state_dict(), checkpoint_path)
-            torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
-                                                                train_config['ckpt_name']))
+            # torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
+            #                                                   train_config['ckpt_name']))
+
             map_score = evaluate_map(args,validation_set=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
@@ -257,12 +258,23 @@ def train(args):
         # Calculate total training time
         total_time = time.time() - training_start_time
         if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
+            # Save training summary
             with open(train_info_path, 'a') as f:
                 f.write(f"\nTotal training time: {total_time:.2f}s\n")
-                if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
-                    f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
-                else:
-                    f.write("No best mAP recorded yet\n")
+                f.write(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}\n")
+                
+            # Copy the best model using the specified naming convention
+            if best_model_path and os.path.exists(best_model_path):
+                best_model_final_path = os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name']
+                )
+                shutil.copy2(best_model_path, best_model_final_path)
+                print(f"Best model copied to: {best_model_final_path}")
+        else:
+            with open(train_info_path, 'a') as f:
+                f.write(f"\nTotal training time: {total_time:.2f}s\n")
+                f.write("No best mAP recorded yet\n")
         
         # Create zip file of logs
         logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
