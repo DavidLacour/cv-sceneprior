@@ -138,7 +138,7 @@ class VOCDataset(Dataset):
         #im = cv2.imread(im_info['filename'])
         #im = Image.open(im_info['filename'])
 
-         try:
+        try:
             rgbd_tensor, image_size = self.load_image_with_depth(
                 im_info['filename'],
                 im_info['depthfilename']
