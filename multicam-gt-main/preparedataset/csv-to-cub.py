@@ -54,39 +54,33 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
 
     if validated:
         df = df[df["validated"] == "t"]
-
+    """
     if creation_method == "imported":
         df = df[df["creation_method"].str.contains("imported")]
     else: 
-       df = df[
-    (df["creation_method"].str.contains("imported")) | 
+    """
+    df = df[
+    #( df["creation_method"].str.contains("imported")) | 
     (df["creation_method"] == creation_method)
-]
+    ]
 
     for frame_id, frame_data in df.groupby('frame_id', sort=True):
-        #frame_id = frame_id + 3150
         cuboids_2d = {cam_idx: [] for cam_idx in cam_params.keys()}
 
         for _, row in frame_data.iterrows():
-
-            world_point = np.array([row['Xw'], row['Yw'], row['Zw'] ]).reshape(-1, 1)
+            world_point = np.array([row['Xw'], row['Yw'], row['Zw']]).reshape(-1, 1)
             width = row['object_size_y']
             height = row['object_size_x']
             length = row['object_size_z']
             theta = row['rotation_theta']
-
            
             for cam_idx, calib in cam_params.items():
                 cuboid_2d = get_cuboid_from_ground_world2(world_point, calib, height, width, length, theta)
                 
-
-
-                # Check if at least one point is in the image and clamp if necessary
                 if any(is_point_in_image(point, 0, 1920, 0, 1080) for point in cuboid_2d):
                     clamped_cuboid = [clamp_coordinates(point, 0, 1920, 0, 1080) for point in cuboid_2d]
                     cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
 
-        # Generate XML for each camera
         for cam_idx, cuboids in cuboids_2d.items():
             if not cuboids:
                 continue  
@@ -112,22 +106,21 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
             for person_id, cuboid in cuboids:
                 (xmin, ymin), (xmax, ymax) = get_bounding_box(cuboid)
                 
-                
                 if xmin < xmax and ymin < ymax:
                     obj = ET.SubElement(root, "object")
                     ET.SubElement(obj, "name").text = "person"
                     ET.SubElement(obj, "pose").text = "Unspecified"
                     ET.SubElement(obj, "truncated").text = "0"
                     ET.SubElement(obj, "difficult").text = "0"
+                    ET.SubElement(obj, "person_id").text = str(person_id)
 
                     bndbox = ET.SubElement(obj, "bndbox")
-                    
                     ET.SubElement(bndbox, "xmin").text = str(int(xmin))
                     ET.SubElement(bndbox, "ymin").text = str(int(ymin))
                     ET.SubElement(bndbox, "xmax").text = str(int(xmax))
                     ET.SubElement(bndbox, "ymax").text = str(int(ymax))
 
-                    ET.SubElement(obj, "confidence").text = "1.0"  
+                    ET.SubElement(obj, "confidence").text = "1.0"
 
             tree = ET.ElementTree(root)
             output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
@@ -143,7 +136,7 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "sync_SYNC17APR0908__sync_IVANA__existing_annotation"
+creation_method = "imported_cam_1_1_frame_3752"
 csv_file = "../../../annotationsdifferentsmethods.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
 output_folder = "../../../outputAnnotations2" + creation_method + "validatedandExisting"
@@ -155,31 +148,34 @@ print("XML files generation completed.")
 import os
 import cv2
 import xml.etree.ElementTree as ET
-
 def draw_annotations(image_path, xml_path):
-    
     img = cv2.imread(image_path)
-
-   
+    
+    if not os.path.exists(image_path) or not os.path.exists(xml_path):
+        print(f"Error: Files not found")
+        return
+        
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    
     for obj in root.findall('object'):
-        name = obj.find('name').text
         bbox = obj.find('bndbox')
         xmin = int(bbox.find('xmin').text)
         ymin = int(bbox.find('ymin').text)
         xmax = int(bbox.find('xmax').text)
         ymax = int(bbox.find('ymax').text)
 
-        
+        # Draw rectangle
         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-
-        cv2.putText(img, name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        
+        # Draw name (which should be person_id)
+        person_id = obj.find('person_id').text if obj.find('person_id') is not None else 'unknown'
+        cv2.putText(img, f"ID: {person_id}", (xmin + 5, ymin + 25), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
     cv2.imshow('Image', img)
-    cv2.waitKey(0)  
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
    
 
 image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003752.jpg'
