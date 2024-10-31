@@ -37,7 +37,7 @@ train_params:
   task_name: '../../task_cams'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
-  num_epochs: 2
+  num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
   ckpt_name: 'cams_model_weigths.pth'
