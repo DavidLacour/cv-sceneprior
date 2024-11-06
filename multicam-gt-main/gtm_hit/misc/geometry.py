@@ -303,7 +303,8 @@ def get_projected_points2(points3d, calib, undistort=False):
     return points2d
 
 def get_projected_points(points3d, calib, undistort=False):
-    undistort = settings.UNDISTORTED_FRAMES
+    undistort=False
+    #undistort = settings.UNDISTORTED_FRAMES
     points3d = np.array(points3d).reshape(-1, 3)
     Rvec = calib.extrinsics.get_R_vec()  # cv.Rodrigues
     Tvec = calib.extrinsics.T

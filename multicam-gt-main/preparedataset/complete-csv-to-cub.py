@@ -99,6 +99,6 @@ if __name__ == "__main__":
     undistort = True
 
     # Test visualization
-    image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003752.jpg'
-    xml_path = output_folder + '/frame00003752_cam1_1.xml'
+    image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003157.jpg'
+    xml_path = output_folder + '/frame00003157_cam1_1.xml'
     visualize_by_method(image_path, xml_path)

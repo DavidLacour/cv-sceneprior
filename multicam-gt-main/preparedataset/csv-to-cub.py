@@ -16,10 +16,25 @@ from gtm_hit.misc.geometry import (
     get_cuboid_from_ground_world, 
     get_projected_points, 
     get_bounding_box, 
-    get_cuboid_from_ground_world2
+    get_cuboid_from_ground_world2,
+    CuboidVertexEnum,
+    CUBOID_VERTEX_COUNT
 )
 
-
+"""
+class CuboidVertexEnum(IntEnum):
+    FrontTopRight = 0
+    FrontTopLeft = 1
+    RearTopRight = 2
+    RearTopLeft = 3
+    FrontBottomRight = 4
+    FrontBottomLeft = 5
+    RearBottomRight = 6
+    RearBottomLeft = 7
+    Base = 8
+    Direction=9
+CUBOID_VERTEX_COUNT = 10
+"""
 
 def is_point_in_image(point, min_x, max_x, min_y, max_y):
     return min_x <= point[0] <= max_x and min_y <= point[1] <= max_y
@@ -51,31 +66,75 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
     unique_names = df[~df["creation_method"].str.contains("imported", case=False, na=False)]["creation_method"].unique()
     for name in unique_names:
         print(name)
-
+    """
     if validated:
         df = df[df["validated"] == "t"]
+    """
     """
     if creation_method == "imported":
         df = df[df["creation_method"].str.contains("imported")]
     else: 
     """
+    """
     df = df[
     #( df["creation_method"].str.contains("imported")) | 
     (df["creation_method"] == creation_method)
     ]
-
+    """
     for frame_id, frame_data in df.groupby('frame_id', sort=True):
         cuboids_2d = {cam_idx: [] for cam_idx in cam_params.keys()}
 
         for _, row in frame_data.iterrows():
+            """
             world_point = np.array([row['Xw'], row['Yw'], row['Zw']]).reshape(-1, 1)
+            
             width = row['object_size_y']
             height = row['object_size_x']
             length = row['object_size_z']
             theta = row['rotation_theta']
-           
+
+            height= annotation.object_size_x
+            width = annotation.object_size_y
+            length = annotation.object_size_z
+            theta = annotation.rotation_theta
+            """
+            height= row['object_size_x']
+            width = row['object_size_y']
+            length =row['object_size_z']
+            theta = row['rotation_theta']
+            world_point = np.array([row['Xw'], row['Yw'], row['Zw']]).reshape(-1, 1)
+            #world_point = row['world_point']
+            #  height, width, length
+            # no length , width,height
+            #bof  height, length,width
+            #no  width , length,height
+            #bof height , width, length
+            
             for cam_idx, calib in cam_params.items():
-                cuboid_2d = get_cuboid_from_ground_world2(world_point, calib, height, width, length, theta)
+                
+                cuboid_points3d = np.zeros((CUBOID_VERTEX_COUNT, 3))
+                cuboid_points3d[CuboidVertexEnum.FrontTopRight] = [width / 2, length / 2, height]
+                cuboid_points3d[CuboidVertexEnum.FrontTopLeft] = [-width / 2, length / 2, height]
+                cuboid_points3d[CuboidVertexEnum.RearTopRight] = [width / 2, -length / 2, height]
+                cuboid_points3d[CuboidVertexEnum.RearTopLeft] = [-width / 2, -length / 2, height]
+                cuboid_points3d[CuboidVertexEnum.FrontBottomRight] = [width / 2, length / 2, 0]
+                cuboid_points3d[CuboidVertexEnum.FrontBottomLeft] = [-width / 2, length / 2, 0]
+                cuboid_points3d[CuboidVertexEnum.RearBottomRight] = [width / 2, -length / 2, 0]
+                cuboid_points3d[CuboidVertexEnum.RearBottomLeft] = [-width / 2, -length / 2, 0]
+                cuboid_points3d[CuboidVertexEnum.Base] = [0, 0, 0]
+                cuboid_points3d[CuboidVertexEnum.Direction] = [0, length / 2, 0]
+                #theta = np.pi/9 # 20 degree
+                #set_trace()
+                rotz = np.array([[np.cos(theta),-np.sin(theta),0],
+                                [np.sin(theta), np.cos(theta),0],
+                                [            0,             0,1]])
+                cuboid_points3d = (rotz @ cuboid_points3d.T).T
+                cuboid_points3d = cuboid_points3d + world_point.T
+                #
+                cuboid_points2d = get_projected_points(cuboid_points3d,calib,undistort=False)
+                cuboid_2d =  cuboid_points2d
+                
+                #cuboid_2d = get_cuboid_from_ground_world2(world_point, calib,width , length, height, theta)
                 
                 if any(is_point_in_image(point, 0, 1920, 0, 1080) for point in cuboid_2d):
                     clamped_cuboid = [clamp_coordinates(point, 0, 1920, 0, 1080) for point in cuboid_2d]
@@ -86,7 +145,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                 continue  
 
             root = ET.Element("annotation")
-            ET.SubElement(root, "folder").text = "VOC2007"
+            ET.SubElement(root, "folder").text = "InvisionData"
 
             camera_id = cam_params[cam_idx].id
             ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_undistorted_{frame_id:08d}.jpg"
@@ -126,6 +185,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
             output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
             tree.write(output_xml)
             print(f"Generated XML file: {output_xml}")
+    
 # imported means the name contains imported 
 """
 imported
@@ -136,8 +196,8 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "imported_cam_1_1_frame_3752"
-csv_file = "../../../annotationsdifferentsmethods.csv"
+creation_method = "sync_SYNC17APR0908__sync_IVANA__existing_annotation"
+csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
 output_folder = "../../../outputAnnotations2" + creation_method + "validatedandExisting"
 undistort = True  #might not work  
@@ -165,10 +225,10 @@ def draw_annotations(image_path, xml_path):
         xmax = int(bbox.find('xmax').text)
         ymax = int(bbox.find('ymax').text)
 
-        # Draw rectangle
+       
         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
         
-        # Draw name (which should be person_id)
+        
         person_id = obj.find('person_id').text if obj.find('person_id') is not None else 'unknown'
         cv2.putText(img, f"ID: {person_id}", (xmin + 5, ymin + 25), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
@@ -178,8 +238,8 @@ def draw_annotations(image_path, xml_path):
     cv2.destroyAllWindows()
    
 
-image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003752.jpg'
-xml_path =  output_folder + '/frame00003752_cam1_1.xml'
+image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00004200.jpg'
+xml_path =  output_folder + '/frame00004200_cam1_1.xml'
 
 
 if not os.path.exists(image_path):
