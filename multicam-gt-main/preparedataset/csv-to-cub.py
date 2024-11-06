@@ -196,10 +196,10 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "sync_SYNC17APR0908__sync_IVANA__existing_annotation"
+creation_method = "Worker_ID"
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../outputAnnotations2" + creation_method + "validatedandExisting"
+output_folder = "../../../Worker_ID_undistorted" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
