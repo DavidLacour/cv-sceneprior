@@ -41,4 +41,4 @@ train_params:
   num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
-  ckpt_name: 'cloe.pth'
+  ckpt_name: 'weights.pth'
