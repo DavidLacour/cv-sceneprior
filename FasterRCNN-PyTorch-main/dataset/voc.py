@@ -28,7 +28,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
 
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
-        depth_filename = f"{camera_name}_undistorted_depth.npy"
+        depth_filename = f"{camera_name}_depth_distorted.npy"
         depth_path = os.path.join(depth_dir, depth_filename)
         if not os.path.exists(depth_path):
             raise FileNotFoundError(f"Depth file not found: {depth_path}")
