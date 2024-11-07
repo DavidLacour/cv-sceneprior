@@ -5,13 +5,12 @@ import re
 
 annotationsPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/IvanAnnotations"
 framesPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/frames"
-base_dir = "../../../Ivan"
+base_dir = "../../../ivan4"
 
 def create_directory_structure():
     """Create the required directory structure."""
     datasets = ["train_dataset", "val_dataset", "test_dataset"]
     subdirs = ["Annotations", "JPEGImages"]
-    
     for dataset in datasets:
         for subdir in subdirs:
             Path(f"{base_dir}/{dataset}/{subdir}").mkdir(parents=True, exist_ok=True)
@@ -42,6 +41,15 @@ def get_dataset_mapping():
         "2_4": "train_dataset"
     }
 
+def format_frame_number(frame_number):
+    """Convert frame number to 8-digit format."""
+    return str(int(frame_number)).zfill(8)
+
+def get_new_filename(camera_suffix, frame_number, extension):
+    """Generate new filename in the format cam1_1_distorted_00003094.xml"""
+    formatted_frame = format_frame_number(frame_number)
+    return f"cam{camera_suffix}_distorted_{formatted_frame}{extension}"
+
 def organize_dataset():
     """Main function to organize the dataset."""
     # Create directory structure
@@ -67,8 +75,10 @@ def organize_dataset():
             if camera_suffix in camera_mapping and camera_suffix in dataset_mapping:
                 # Get corresponding image filename
                 original_image_filename = f"{frame_number}.jpg"
-                # New image filename will match annotation name (with .jpg extension)
-                new_image_filename = annotation_file.stem + ".jpg"
+                
+                # Generate new filenames in the desired format
+                new_annotation_filename = get_new_filename(camera_suffix, frame_number, ".xml")
+                new_image_filename = get_new_filename(camera_suffix, frame_number, ".jpg")
                 
                 camera_folder = camera_mapping[camera_suffix]
                 dataset_type = dataset_mapping[camera_suffix]
@@ -77,7 +87,7 @@ def organize_dataset():
                 image_source = frames_dir / camera_folder / original_image_filename
                 
                 # Destination paths
-                annotation_dest = Path(base_dir) / dataset_type / "Annotations" / annotation_file.name
+                annotation_dest = Path(base_dir) / dataset_type / "Annotations" / new_annotation_filename
                 image_dest = Path(base_dir) / dataset_type / "JPEGImages" / new_image_filename
                 
                 # Copy files if image exists
