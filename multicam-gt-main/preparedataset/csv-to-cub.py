@@ -182,7 +182,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     ET.SubElement(obj, "confidence").text = "1.0"
 
             tree = ET.ElementTree(root)
-            output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
+            output_xml = os.path.join(output_folder, f"cam{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.xml")
             tree.write(output_xml)
             print(f"Generated XML file: {output_xml}")
     
@@ -199,7 +199,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = "Worker_ID"
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../Worker_ID_undistorted" 
+output_folder = "../../../ivan2" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
