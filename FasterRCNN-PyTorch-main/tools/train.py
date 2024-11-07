@@ -197,41 +197,41 @@ def train(args):
             
             # Evaluate mAP and handle early stopping
             # save because evaluae_map use saved weights 
-            if epoch > 9 : 
-                model_path = os.path.join(train_config['task_name'], train_config['ckpt_name'])
-                torch.save(faster_rcnn_model.state_dict(), model_path)
+            # if epoch > 9 : 
+            model_path = os.path.join(train_config['task_name'], train_config['ckpt_name'])
+            torch.save(faster_rcnn_model.state_dict(), model_path)
+        
+            map_score = evaluate_map(args,validation_set=True)
+            writer.add_scalar('map', map_score, epoch)
+            early_stopping(map_score, epoch)
             
-                map_score = evaluate_map(args,validation_set=True)
-                writer.add_scalar('map', map_score, epoch)
-                early_stopping(map_score, epoch)
-                
-                # Save checkpoint
-                checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
-                torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': faster_rcnn_model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'scheduler_state_dict': scheduler.state_dict(),
-                    'global_step': global_step,
-                    'map_score': map_score,
-                    'config': config
-                }, checkpoint_path)
-                
-                # Update best model path if this is the best mAP
-                if early_stopping.best_epoch == epoch:
-                    if best_model_path and os.path.exists(best_model_path):
-                        os.remove(best_model_path)
-                    best_model_path = checkpoint_path
-                
-                # Update training info file
-                with open(train_info_path, 'a') as f:
-                    f.write(f"\nEpoch {epoch} completed in {epoch_time:.2f}s\n")
-                    f.write(f"Average losses:\n")
-                    f.write(f"  RPN Classification: {epoch_rpn_cls_loss:.4f}\n")
-                    f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
-                    f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
-                    f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
-                    f.write(f"  mAP: {map_score:.4f}\n")
+            # Save checkpoint
+            checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': faster_rcnn_model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'global_step': global_step,
+                'map_score': map_score,
+                'config': config
+            }, checkpoint_path)
+            
+            # Update best model path if this is the best mAP
+            if early_stopping.best_epoch == epoch:
+                if best_model_path and os.path.exists(best_model_path):
+                    os.remove(best_model_path)
+                best_model_path = checkpoint_path
+            
+            # Update training info file
+            with open(train_info_path, 'a') as f:
+                f.write(f"\nEpoch {epoch} completed in {epoch_time:.2f}s\n")
+                f.write(f"Average losses:\n")
+                f.write(f"  RPN Classification: {epoch_rpn_cls_loss:.4f}\n")
+                f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
+                f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
+                f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
+                f.write(f"  mAP: {map_score:.4f}\n")
             
             scheduler.step()
             
