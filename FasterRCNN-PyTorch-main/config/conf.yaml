@@ -1,10 +1,10 @@
 dataset_params:
-  im_train_path: '../../../../cloe/train_dataset/JPEGImages'
-  ann_train_path: '../../../../cloe/train_dataset/Annotations'
-  im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImages'
-  ann_test_path: '../../../../cloe/test_dataset_1_2/Annotations'
-  im_val_path: '../../../../cloe/validation_dataset_2_1/JPEGImages'
-  ann_val_path: '../../../../cloe/validation_dataset_2_1/Annotations'
+  im_train_path: '../../../../ivan/train_dataset/JPEGImages'
+  ann_train_path: '../../../../ivan/train_dataset/Annotations'
+  im_test_path: '../../../../ivan/test_dataset_1_2/JPEGImages'
+  ann_test_path: '../../../../ivan/test_dataset_1_2/Annotations'
+  im_val_path: '../../../../ivan/validation_dataset_2_1/JPEGImages'
+  ann_val_path: '../../../../ivan/validation_dataset_2_1/Annotations'
   depth_path:  '../../../../depthmaps'
   num_classes : 2 # number_classes + background
 
@@ -35,7 +35,7 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../task_cams2'
+  task_name: '../../ivan'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
