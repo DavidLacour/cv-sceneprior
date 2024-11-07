@@ -197,7 +197,7 @@ def train(args):
             
             # Evaluate mAP and handle early stopping
             # save because evaluae_map use saved weights 
-            model_path = os.path.join(task_dir, train_config['ckpt_name'])
+            model_path = os.path.join(train_config['task_name'], train_config['ckpt_name'])
             torch.save(faster_rcnn_model.state_dict(), model_path)
           
             map_score = evaluate_map(args,validation_set=True)
