@@ -219,7 +219,10 @@ def train(args):
     global_step = 0
     training_start_time = time.time()
     best_model_path = None
-
+    best_weights_path = os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name'] + "best"
+                )
     try:
 
         for epoch in range(num_epochs):
@@ -279,10 +282,7 @@ def train(args):
             map_score = evaluate_map(args,validation_set=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
-            best_weights_path = os.path.join(
-                    train_config['task_name'],
-                    train_config['ckpt_name'] + "best"
-                )
+            
             if early_stopping.require_save:
                  torch.save(faster_rcnn_model.state_dict(), best_weights_path)
 
