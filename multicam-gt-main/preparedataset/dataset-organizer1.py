@@ -5,7 +5,7 @@ import re
 
 annotationsPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/IvanAnnotations"
 framesPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/frames"
-base_dir = "../../../ivan5"
+base_dir = "../../../ivan7"
 
 def create_directory_structure():
     """Create the required directory structure."""
@@ -41,15 +41,6 @@ def get_dataset_mapping():
         "2_4": "train_dataset"
     }
 
-def format_frame_number(frame_number):
-    """Convert frame number to 8-digit format."""
-    return str(int(frame_number)).zfill(8)
-
-def get_new_filename(camera_suffix, frame_number, extension):
-    """Generate new filename in the format cam1_1_distorted_00003094.xml"""
-    formatted_frame = format_frame_number(frame_number)
-    return f"cam_{camera_suffix}_distorted_{formatted_frame}{extension}"
-
 def organize_dataset():
     """Main function to organize the dataset."""
     # Create directory structure
@@ -63,30 +54,30 @@ def organize_dataset():
     annotations_dir = Path(annotationsPath)
     frames_dir = Path(framesPath)
     
-    # Compile regex pattern for annotation files
-    pattern = re.compile(r"frame(\d+)_cam(1_[1-4]|2_[1-4])\.xml")
+    # Updated regex pattern for the new annotation format: cam_1_1_distorted_00003178.xml
+    pattern = re.compile(r"cam_(1_[1-4]|2_[1-4])_distorted_(\d{8})\.xml")
     
     for annotation_file in annotations_dir.glob("*.xml"):
         match = pattern.match(annotation_file.name)
         if match:
-            frame_number = match.group(1)
-            camera_suffix = match.group(2)
+            camera_suffix = match.group(1)
+            frame_number = match.group(2)
             
             if camera_suffix in camera_mapping and camera_suffix in dataset_mapping:
-                # Get corresponding image filename
+                # Keep annotation filename as is (new format)
+                new_annotation_filename = annotation_file.name
+                # For image, use just the frame number with .jpg
                 original_image_filename = f"{frame_number}.jpg"
-                
-                # Generate new filenames in the desired format
-                new_annotation_filename = get_new_filename(camera_suffix, frame_number, ".xml")
-                new_image_filename = get_new_filename(camera_suffix, frame_number, ".jpg")
+                # But the destination image should match the annotation format
+                new_image_filename = new_annotation_filename.replace('.xml', '.jpg')
                 
                 camera_folder = camera_mapping[camera_suffix]
                 dataset_type = dataset_mapping[camera_suffix]
                 
-                # Source paths
+                # Source paths - image is in original format (00000000.jpg)
                 image_source = frames_dir / camera_folder / original_image_filename
                 
-                # Destination paths
+                # Destination paths - both files in new format
                 annotation_dest = Path(base_dir) / dataset_type / "Annotations" / new_annotation_filename
                 image_dest = Path(base_dir) / dataset_type / "JPEGImages" / new_image_filename
                 

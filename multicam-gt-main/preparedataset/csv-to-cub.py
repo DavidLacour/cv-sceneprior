@@ -60,7 +60,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
    
     df['frame_id'] = df['frame_id'].astype(int)
     df['person_id'] = df['person_id'].astype(int)
-    
+    df = df[(df['frame_id'] >= 3150) & (df['frame_id'] <= 4424) & (df['frame_id'] % 7 == 0)]
  
     df = df.sort_values('frame_id')
     unique_names = df[~df["creation_method"].str.contains("imported", case=False, na=False)]["creation_method"].unique()
@@ -182,7 +182,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     ET.SubElement(obj, "confidence").text = "1.0"
 
             tree = ET.ElementTree(root)
-            output_xml = os.path.join(output_folder, f"cam{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.xml")
+            output_xml = os.path.join(output_folder, f"cam_{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.xml")
             tree.write(output_xml)
             print(f"Generated XML file: {output_xml}")
     
@@ -196,10 +196,10 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "Worker_ID"
+creation_method = "Worker_ID11"
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../ivan2" 
+output_folder = "../../../Worker_ID11" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
@@ -228,9 +228,8 @@ def draw_annotations(image_path, xml_path):
        
         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
         
-        
-        person_id = obj.find('person_id').text if obj.find('person_id') is not None else 'unknown'
-        cv2.putText(img, f"ID: {person_id}", (xmin + 5, ymin + 25), 
+      
+        cv2.putText(img, f"ID: ", (xmin + 5, ymin + 25), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
     cv2.imshow('Image', img)
@@ -238,8 +237,8 @@ def draw_annotations(image_path, xml_path):
     cv2.destroyAllWindows()
    
 
-image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00004200.jpg'
-xml_path =  output_folder + '/frame00004200_cam1_1.xml'
+image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam2/00004424.jpg'
+xml_path =  output_folder + '/cam_1_2_distorted_00004424.xml'
 
 
 if not os.path.exists(image_path):
