@@ -1,9 +1,9 @@
 dataset_params:
-  im_train_path: '../../../../ivan7/train_dataset/JPEGImages'
+  im_train_path: '../../../../cloe/train_dataset/JPEGImages'
   ann_train_path: '../../../../ivan7/train_dataset/Annotations'
-  im_test_path: '../../../../ivan7/train_dataset/JPEGImages'
+  im_test_path: '../../../../cloe/train_dataset/JPEGImages'
   ann_test_path: '../../../../ivan7/train_dataset/Annotations'
-  im_val_path: '../../../../ivan7/train_dataset/JPEGImages'
+  im_val_path: '../../../../cloe/train_dataset/JPEGImages'
   ann_val_path: '../../../../ivan7/train_dataset/Annotations'
   depth_path:  '../../../../depthmaps'
   num_classes : 2 # number_classes + background
