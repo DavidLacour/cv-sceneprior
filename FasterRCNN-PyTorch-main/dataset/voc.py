@@ -54,12 +54,13 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
             error_details = []
             # Check for name element
             name_elem = obj.find('name')
+            print(name_elem)
             if name_elem is None:
                 error_details.append("Missing 'name' element")
             elif not name_elem.text:
                 error_details.append("Empty 'name' element")
             if name_elem.text is not "person":
-                print("NOT A PERSON 777777777777777777777777")
+                print("NOT A PERSON 777777777777777777777777"+ name_elem.text)
             if error_details:
                 print(error_details)
             # Check for bndbox element and its children
