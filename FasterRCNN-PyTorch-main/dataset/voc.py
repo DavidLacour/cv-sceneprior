@@ -51,7 +51,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         if(len(my_objs)) == 0:
             "NO OBJECT 77777777777777777777777777777777777777777777777777777777777777777777777777777"
         for obj in ann_info.findall('object'):
-
+            error_details = []
             # Check for name element
             name_elem = obj.find('name')
             if name_elem is None:
