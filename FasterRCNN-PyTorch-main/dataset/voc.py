@@ -64,30 +64,36 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
             name_elem = obj.find('name')
             if name_elem is None:
                 error_details.append("Missing 'name' element")
+                print("name is none ")
             elif not name_elem.text:
                 error_details.append("Empty 'name' element")
+                print("Empty 'name' element")
             if name_elem.text != "person":
                 print("NOT A PERSON 777777777777777777777777"+ name_elem.text)
-            if error_details:
-                print(error_details)
+          
             # Check for bndbox element and its children
             bbox_elem = obj.find('bndbox')
             if bbox_elem is None:
                 error_details.append("Missing 'bndbox' element")
+                print("Missing 'bndbox' element")
             else:
                 required_bbox_fields = ['xmin', 'ymin', 'xmax', 'ymax']
                 for field in required_bbox_fields:
                     field_elem = bbox_elem.find(field)
                     if field_elem is None:
                         error_details.append(f"Missing '{field}' in bndbox")
+                        print("Missing field ")
                     elif not field_elem.text:
                         error_details.append(f"Empty '{field}' value in bndbox")
+                        print("empty value")
                     else:
                         try:
                             # Verify bbox values can be converted to float
                             float(field_elem.text)
                         except ValueError:
                             error_details.append(f"Invalid number format for '{field}': {field_elem.text}")
+            if error_details:
+                print(error_details)
             
             det = {}
             label = label2idx[obj.find('name').text]
