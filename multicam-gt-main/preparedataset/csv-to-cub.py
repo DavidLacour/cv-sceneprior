@@ -148,7 +148,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
             ET.SubElement(root, "folder").text = "InvisionData"
 
             camera_id = cam_params[cam_idx].id
-            ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_undistorted_{frame_id:08d}.jpg"
+            ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.jpg"
 
             source = ET.SubElement(root, "source")
             ET.SubElement(source, "database").text = "The VOC2007 Database"
@@ -196,10 +196,10 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "Worker_ID11"
+creation_method = "Worker_ID11undistort"
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../Worker_ID11" 
+output_folder = "../../../Worker_ID11undistort" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)

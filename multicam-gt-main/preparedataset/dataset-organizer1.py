@@ -5,7 +5,7 @@ import re
 
 annotationsPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/IvanAnnotations"
 framesPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/frames"
-base_dir = "../../../ivan7"
+base_dir = "../../../ivan9"
 
 def create_directory_structure():
     """Create the required directory structure."""
