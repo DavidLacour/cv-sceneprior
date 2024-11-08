@@ -59,7 +59,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
                 error_details.append("Missing 'name' element")
             elif not name_elem.text:
                 error_details.append("Empty 'name' element")
-            if name_elem.text is not "person":
+            if name_elem.text != "person":
                 print("NOT A PERSON 777777777777777777777777"+ name_elem.text)
             if error_details:
                 print(error_details)
