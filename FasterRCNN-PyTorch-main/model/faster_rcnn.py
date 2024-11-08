@@ -871,8 +871,8 @@ class FasterRCNN(nn.Module):
            print("proposal shape",proposals.shape)
            print( "feat",feat.shape)
            print("image",image.shape)
-           print( "target image",target.shape)
            print("image.fname",image.fname)
+           print(target)
         frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
         if not self.training:
             # Transform boxes to original image dimensions called only during inference
