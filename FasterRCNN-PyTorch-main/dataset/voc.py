@@ -9,6 +9,7 @@ from tqdm import tqdm
 from torch.utils.data.dataset import Dataset
 import xml.etree.ElementTree as ET
 import numpy as np
+import re
 
 def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
     r"""
@@ -26,8 +27,11 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         im_info = {}
         im_info['img_id'] = os.path.basename(ann_file).split('.xml')[0]
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
+        filename = im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
         # CHANGE THIS DEBUG 
-        im_info['filename'] = im_info['filename'].replace('distorted', 'undistorted')
+        im_info['filename'] = re.sub(r'(\d+)\.xml$', 
+                 lambda m: f"{int(m.group(1))-3149:08d}.xml", 
+                 filename.replace('distorted', 'undistorted'))
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
         depth_filename = f"{camera_name}_depth.npy"
         depth_path = os.path.join(depth_dir, depth_filename)
