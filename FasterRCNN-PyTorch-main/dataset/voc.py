@@ -32,7 +32,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         number = int(numberS)
         number = number - 3159
         numberS2 = str(number)
-        img_id = ('_').join(filename.split('_')[:3]) + "_" + numberS2
+        img_id = ('_').join(img_id .split('_')[:3]) + "_" + numberS2
         img_id.replace('distorted', 'undistorted')
         im_info['img_id']  = img_id
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
