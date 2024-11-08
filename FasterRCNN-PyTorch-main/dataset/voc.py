@@ -27,15 +27,6 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         im_info = {}
         im_info['img_id'] = os.path.basename(ann_file).split('.xml')[0]
       
-        # Get the number and process it
-        parts = im_info['img_id'].split('_')
-        number = int(parts[4]) - 3159
-
-        # Reconstruct the image ID with undistorted and new number with zero padding
-        img_id = '_'.join(parts[:4]).replace('distorted', 'undistorted') + '_' + f"{number:08d}"
-        im_info['img_id'] = img_id
-
-        # Continue with the rest of the code
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
         depth_filename = f"{camera_name}_depth.npy"
