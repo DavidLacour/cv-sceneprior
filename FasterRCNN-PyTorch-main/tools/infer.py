@@ -205,7 +205,7 @@ def infer(args):
         random_idx = random.randint(0, len(voc))
         im, target, fname = voc[random_idx]
         im = im.unsqueeze(0).float().to(device)
-        
+      
         
         # gt_im =  np.load(fname, allow_pickle=True)
         #gt_im = Image.open(image_path)
@@ -239,9 +239,10 @@ def infer(args):
                         fontFace=cv2.FONT_HERSHEY_PLAIN)
         cv2.addWeighted(gt_im_copy, 0.7, gt_im, 0.3, 0, gt_im)
         cv2.imwrite('samples/output_frcnn_gt_{}.png'.format(sample_count), gt_im)
-        
+        im.fname = fname
         # Getting predictions from trained model
         rpn_output, frcnn_output = faster_rcnn_model(im, None)
+
         boxes = frcnn_output['boxes']
         labels = frcnn_output['labels']
         scores = frcnn_output['scores']
