@@ -47,8 +47,37 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
         im_info['width'] = width
         im_info['height'] = height
         detections = []
-        
+        my_objs = ann_info.findall('object')
+        if(len(my_objs)) == 0:
+            "NO OBJECT 77777777777777777777777777777777777777777777777777777777777777777777777777777"
         for obj in ann_info.findall('object'):
+
+            # Check for name element
+            name_elem = obj.find('name')
+            if name_elem is None:
+                error_details.append("Missing 'name' element")
+            elif not name_elem.text:
+                error_details.append("Empty 'name' element")
+                
+            # Check for bndbox element and its children
+            bbox_elem = obj.find('bndbox')
+            if bbox_elem is None:
+                error_details.append("Missing 'bndbox' element")
+            else:
+                required_bbox_fields = ['xmin', 'ymin', 'xmax', 'ymax']
+                for field in required_bbox_fields:
+                    field_elem = bbox_elem.find(field)
+                    if field_elem is None:
+                        error_details.append(f"Missing '{field}' in bndbox")
+                    elif not field_elem.text:
+                        error_details.append(f"Empty '{field}' value in bndbox")
+                    else:
+                        try:
+                            # Verify bbox values can be converted to float
+                            float(field_elem.text)
+                        except ValueError:
+                            error_details.append(f"Invalid number format for '{field}': {field_elem.text}")
+            
             det = {}
             label = label2idx[obj.find('name').text]
             bbox_info = obj.find('bndbox')
@@ -61,6 +90,7 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
             det['label'] = label
             det['bbox'] = bbox
             detections.append(det)
+            
         im_info['detections'] = detections
         im_infos.append(im_info)
     print('Total {} images found'.format(len(im_infos)))
