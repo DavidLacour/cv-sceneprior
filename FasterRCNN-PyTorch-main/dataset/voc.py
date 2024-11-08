@@ -54,7 +54,6 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
             error_details = []
             # Check for name element
             name_elem = obj.find('name')
-            print(name_elem)
             if name_elem is None:
                 error_details.append("Missing 'name' element")
             elif not name_elem.text:
