@@ -26,16 +26,22 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
     for ann_file in tqdm(glob.glob(os.path.join(ann_dir, '*.xml'))):
         im_info = {}
         im_info['img_id'] = os.path.basename(ann_file).split('.xml')[0]
-        #debug
-        img_id = im_info['img_id']
-        numberS = img_id.split('_')[4]
-        number = int(numberS)
-        number = number - 3159
-        numberS2 = str(number)
-        img_id = ('_').join(img_id .split('_')[:3]) + "_" + numberS2
-        img_id.replace('distorted', 'undistorted')
-        im_info['img_id']  = img_id
+      
+        # Get the number and process it
+        parts = im_info['img_id'].split('_')
+        number = int(parts[4]) - 3159
+
+        # Reconstruct the image ID with undistorted and new number with zero padding
+        img_id = '_'.join(parts[:4]).replace('distorted', 'undistorted') + '_' + f"{number:08d}"
+        im_info['img_id'] = img_id
+
+        # Continue with the rest of the code
         im_info['filename'] = os.path.join(im_dir, '{}.jpg'.format(im_info['img_id']))
+        camera_name = '_'.join(im_info['img_id'].split('_')[:3])
+        depth_filename = f"{camera_name}_depth.npy"
+        depth_path = os.path.join(depth_dir, depth_filename)
+        if not os.path.exists(depth_path):
+            raise FileNotFoundError(f"Depth file not found: {depth_path}")
         
                  
         camera_name = '_'.join(im_info['img_id'].split('_')[:3])
