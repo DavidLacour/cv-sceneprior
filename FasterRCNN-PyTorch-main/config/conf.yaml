@@ -4,7 +4,7 @@ dataset_params:
   im_test_path: '../../../../cloe/test_dataset_1_2/JPEGImagesShort'
   ann_test_path: '../../../../cloe/test_dataset_1_2/AnnotationsShort'
   im_val_path: '../../../../cloe/validation_dataset_2_1/JPEGImagesShort'
-  ann_val_path: '../../../../cloe/validation_dataset_2_1_/AnnotationsShort'
+  ann_val_path: '../../../../cloe/validation_dataset_2_1/AnnotationsShort'
   num_classes : 2 # number_classes + background
 
 model_params:
