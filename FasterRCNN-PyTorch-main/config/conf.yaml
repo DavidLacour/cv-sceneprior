@@ -1,10 +1,10 @@
 dataset_params:
-  im_train_path: '../../../../ivan7/train_dataset/JPEGImages'
-  ann_train_path: '../../../../ivan7/train_dataset/Annotations'
-  im_test_path: '../../../../ivan7/train_dataset/JPEGImages'
-  ann_test_path: '../../../../ivan7/train_dataset/Annotations'
-  im_val_path: '../../../../ivan7/train_dataset/JPEGImages'
-  ann_val_path: '../../../../ivan7/train_dataset/Annotations'
+  im_train_path: '../../../../cloe/train_dataset/JPEGImages1000'
+  ann_train_path: '../../../../cloe/train_dataset/Annotations1000'
+  im_test_path: '../../../../cloe/train_dataset/JPEGImages1000'
+  ann_test_path: '../../../../cloe/train_dataset/Annotations1000'
+  im_val_path: '../../../..cloe/train_dataset/JPEGImages1000'
+  ann_val_path: '../../../../cloe/train_dataset/Annotations1000'
   depth_path:  '../../../../depthmaps'
   num_classes : 2 # number_classes + background
 
@@ -35,10 +35,10 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../tasks_ivan8'
+  task_name: '../../tasks_ivan99'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
-  ckpt_name: 'model_weights8.pth'
+  ckpt_name: 'model_weights.pth'
