@@ -871,7 +871,7 @@ class FasterRCNN(nn.Module):
            print("proposal shape",proposals.shape)
            print( "feat",feat.shape)
            print("image",image.shape)
-           print("image.fname",image.fname)
+           print("image.fname",image)
            print(target)
         frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
         if not self.training:
