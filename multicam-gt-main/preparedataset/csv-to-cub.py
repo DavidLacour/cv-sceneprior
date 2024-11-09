@@ -66,10 +66,10 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
     unique_names = df[~df["creation_method"].str.contains("imported", case=False, na=False)]["creation_method"].unique()
     for name in unique_names:
         print(name)
-    """
-    if validated:
-        df = df[df["validated"] == "t"]
-    """
+    
+    
+    df = df[df["validated"] == "t"]
+    
     """
     if creation_method == "imported":
         df = df[df["creation_method"].str.contains("imported")]
@@ -196,10 +196,10 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "Worker_ID11undistort"
+creation_method = "Worker_ID11undistortnov9"
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../Worker_ID11undistort" 
+output_folder = "../../../Worker_ID11undistortnov9" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
@@ -237,8 +237,8 @@ def draw_annotations(image_path, xml_path):
     cv2.destroyAllWindows()
    
 
-image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam2/00004424.jpg'
-xml_path =  output_folder + '/cam_1_2_distorted_00004424.xml'
+image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam7/00004424.jpg'
+xml_path =  output_folder + '/cam_2_3_distorted_00004424.xml'
 
 
 if not os.path.exists(image_path):
