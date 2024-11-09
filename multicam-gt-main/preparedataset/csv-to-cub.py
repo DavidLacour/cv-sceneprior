@@ -204,7 +204,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../IDENDOFLINE" 
+output_folder = "../../../IDNOENCODING" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
