@@ -34,13 +34,13 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../task_unicode'
+  task_name: '../../task_nosmall'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
-  ckpt_name: 'model_weigths_cloe8.pth'
+  ckpt_name: 'model_weigths.pth'
   batch_size : 8
   sampler : True
   num_samples_per_epoch : 1000
