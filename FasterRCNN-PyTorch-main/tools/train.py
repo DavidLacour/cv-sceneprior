@@ -204,7 +204,7 @@ def train(args):
             map_score = evaluate_map(args,validation_set=True)
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
-            
+            faster_rcnn_model.train()
             # Save checkpoint
             checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
             torch.save({
