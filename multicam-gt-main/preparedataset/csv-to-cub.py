@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import os
 import pandas as pd
 import sys
+from xml.dom import minidom
 
 # Add the directory 'mymoodle' to Python path (or any other relevant folder)
 sys.path.append(os.path.abspath('../'))
@@ -187,7 +188,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
             #output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
             output_xml = os.path.join(output_folder, f"cam{camera_id[0]}_{camera_id[1]}_frame{frame_id:08d}.xml")
             
-            with open(output_xml, 'w', encoding='unicode') as f:
+            with open(output_xml, 'w') as f:
                 f.write(pretty_xml)
             print(f"Generated XML file: {output_xml}")
     
@@ -204,7 +205,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../ID" 
+output_folder = "../../../UNICODE" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
