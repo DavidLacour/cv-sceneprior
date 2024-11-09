@@ -119,8 +119,8 @@ def train(args):
                 optimizer.zero_grad()
             step_count += 1
         print('Finished epoch {}'.format(i))
-        optimizer.step()
-        optimizer.zero_grad()
+        #optimizer.step()
+        #optimizer.zero_grad()
         torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
                                                                 train_config['ckpt_name']))
         loss_output = ''

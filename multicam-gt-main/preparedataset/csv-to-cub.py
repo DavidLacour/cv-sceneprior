@@ -202,8 +202,8 @@ params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibratio
 output_folder = "../../../Worker_ID11undistortnov9" 
 undistort = True  #might not work  
 
-load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
-print("XML files generation completed.")
+#load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
+#print("XML files generation completed.")
 
 import os
 import cv2
@@ -237,8 +237,8 @@ def draw_annotations(image_path, xml_path):
     cv2.destroyAllWindows()
    
 
-image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam7/00004424.jpg'
-xml_path =  output_folder + '/cam_2_3_distorted_00004424.xml'
+image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam3/00003864.jpg'
+xml_path =  output_folder + '/cam_1_3_distorted_00003864.xml'
 
 
 if not os.path.exists(image_path):
