@@ -181,14 +181,14 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     ET.SubElement(bndbox, "ymax").text = str(int(ymax))
                     ET.SubElement(obj, "confidence").text = "1.0"
             
-            xml_str = ET.tostring(root, encoding='unicode')
+            xml_str = ET.tostring(root, encoding='utf-8')
             dom = minidom.parseString(xml_str)
             pretty_xml = dom.toprettyxml(indent="    ")
             
             #output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
-            output_xml = os.path.join(output_folder, f"cam{camera_id[0]}_{camera_id[1]}_frame{frame_id:08d}.xml")
+            output_xml = os.path.join(output_folder, f"cam_{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.xml")
             
-            with open(output_xml, 'w') as f:
+            with open(output_xml, 'w',encoding='utf-8') as f:
                 f.write(pretty_xml)
             print(f"Generated XML file: {output_xml}")
     
@@ -205,7 +205,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../UNICODE" 
+output_folder = "../../../UTF83" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)

@@ -3,9 +3,9 @@ import shutil
 from pathlib import Path
 import re
 
-annotationsPath = "../../../UNICODE"
+annotationsPath = "../../../UTF83"
 framesPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/frames"
-base_dir = "../../../ivan9"
+base_dir = "../../../ivan15"
 
 def create_directory_structure():
     """Create the required directory structure."""
