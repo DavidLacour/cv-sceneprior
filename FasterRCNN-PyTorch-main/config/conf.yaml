@@ -1,5 +1,5 @@
 dataset_params:
-  im_train_path: '../../../../ivannNOSMALL/train_dataset/JPEGImages'
+  im_train_path: '../../../../ivanNOSMALL/train_dataset/JPEGImages'
   ann_train_path: '../../../../ivanNOSMALL/train_dataset/Annotations'
   im_test_path: '../../../../ivanNOSMALL/test_dataset/JPEGImages'
   ann_test_path: '../../../../ivanNOSMALL/test_dataset/Annotations'
