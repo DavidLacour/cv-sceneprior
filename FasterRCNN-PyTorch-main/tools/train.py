@@ -45,7 +45,7 @@ def zip_logs(log_dir, output_path):
 
                 
 class EarlyStopping:
-    def __init__(self, patience=10, min_delta=0.0001):
+    def __init__(self, patience=100, min_delta=0.0001):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
@@ -170,7 +170,7 @@ def train(args):
         yaml.dump(config, f)
     
     writer = SummaryWriter(log_dir)
-    early_stopping = EarlyStopping(patience=10)  # Initialize early stopping
+    early_stopping = EarlyStopping()  # Initialize early stopping
 
     
     seed = train_config['seed']
