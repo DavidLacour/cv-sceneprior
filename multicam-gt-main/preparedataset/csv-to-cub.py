@@ -244,7 +244,7 @@ def draw_annotations(image_path, xml_path):
    
 
 image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003150.jpg'
-xml_path =  output_folder + '/../cam_1_1_distorted_00003150(3).xml'
+xml_path =  output_folder + '/cam_1_1_distorted_00003150.xml'
 
 
 if not os.path.exists(image_path):
