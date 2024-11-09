@@ -148,7 +148,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                         cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
                     else:
                         print(f"Skipping small bounding box for person {row['person_id']} in frame {frame_id} (size: {box_width:.1f}x{box_height:.1f})")
-                    cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
+                    #cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
 
         # Generate XML for each camera
         # Generate XML for each camera
