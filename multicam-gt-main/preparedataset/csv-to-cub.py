@@ -184,7 +184,8 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
             dom = minidom.parseString(xml_str)
             pretty_xml = dom.toprettyxml(indent="    ")
             
-            output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
+            #output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
+            output_xml = os.path.join(output_folder, f"cam{camera_id[0]}_{camera_id[1]}_frame{frame_id:08d}.xml")
             
             with open(output_xml, 'w', encoding='unicode') as f:
                 f.write(pretty_xml)
