@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 import re
 
-annotationsPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/IvanAnnotations"
+annotationsPath = "../../../UNICODE"
 framesPath = "../../../invisiondata/multicam-gt/annotation_dset/13apr/frames"
 base_dir = "../../../ivan9"
 
