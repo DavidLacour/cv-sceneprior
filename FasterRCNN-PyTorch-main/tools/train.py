@@ -295,7 +295,7 @@ def train(args):
             
             if early_stopping.require_save:
                  torch.save(faster_rcnn_model.state_dict(), best_weights_path)
-
+            faster_rcnn_model.train()
             
             # Save checkpoint
             checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
