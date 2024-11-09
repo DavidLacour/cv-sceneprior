@@ -237,8 +237,8 @@ def draw_annotations(image_path, xml_path):
     cv2.destroyAllWindows()
    
 
-image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam3/00003864.jpg'
-xml_path =  output_folder + '/cam_1_3_distorted_00003864.xml'
+image_path = '../../../invisiondata/multicam-gt/annotation_dset/13apr/frames/cam1/00003150.jpg'
+xml_path =  output_folder + '/../cam_1_1_distorted_00003150(3).xml'
 
 
 if not os.path.exists(image_path):
