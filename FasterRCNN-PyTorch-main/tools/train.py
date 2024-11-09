@@ -98,7 +98,7 @@ def train(args):
         yaml.dump(config, f)
     
     writer = SummaryWriter(log_dir)
-    early_stopping = EarlyStopping(patience=10)  # Initialize early stopping
+    early_stopping = EarlyStopping()  # Initialize early stopping
     
     seed = train_config['seed']
     torch.manual_seed(seed)
