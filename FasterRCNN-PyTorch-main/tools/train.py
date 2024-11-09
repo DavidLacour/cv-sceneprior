@@ -242,10 +242,7 @@ def train(args):
                 rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
                 frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
                 loss = rpn_loss + frcnn_loss
-                if(np.isnan(loss)):
-                    print("nan detected ")
-                    print("step:", step_count)
-                    print(fname)
+
                 rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
                 rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
                 frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
