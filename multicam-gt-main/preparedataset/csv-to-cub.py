@@ -140,49 +140,45 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     clamped_cuboid = [clamp_coordinates(point, 0, 1920, 0, 1080) for point in cuboid_2d]
                     cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
 
+        # Generate XML for each camera
         for cam_idx, cuboids in cuboids_2d.items():
             if not cuboids:
-                continue  
-
+                continue
+                
             root = ET.Element("annotation")
-            ET.SubElement(root, "folder").text = "InvisionData"
-
+            ET.SubElement(root, "folder").text = "VOC2007"
             camera_id = cam_params[cam_idx].id
-            ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.jpg"
-
+            ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_undistorted_{frame_id:08d}.jpg"
+            
             source = ET.SubElement(root, "source")
             ET.SubElement(source, "database").text = "The VOC2007 Database"
             ET.SubElement(source, "annotation").text = "PASCAL VOC2007"
             ET.SubElement(source, "image").text = "flickr"
-
+            
             size = ET.SubElement(root, "size")
             ET.SubElement(size, "width").text = "1920"
             ET.SubElement(size, "height").text = "1080"
             ET.SubElement(size, "depth").text = "3"
-
             ET.SubElement(root, "segmented").text = "0"
-
+            
             for person_id, cuboid in cuboids:
                 (xmin, ymin), (xmax, ymax) = get_bounding_box(cuboid)
-                
                 if xmin < xmax and ymin < ymax:
                     obj = ET.SubElement(root, "object")
                     ET.SubElement(obj, "name").text = "person"
                     ET.SubElement(obj, "pose").text = "Unspecified"
                     ET.SubElement(obj, "truncated").text = "0"
                     ET.SubElement(obj, "difficult").text = "0"
-                    ET.SubElement(obj, "person_id").text = str(person_id)
-
+                    
                     bndbox = ET.SubElement(obj, "bndbox")
                     ET.SubElement(bndbox, "xmin").text = str(int(xmin))
                     ET.SubElement(bndbox, "ymin").text = str(int(ymin))
                     ET.SubElement(bndbox, "xmax").text = str(int(xmax))
                     ET.SubElement(bndbox, "ymax").text = str(int(ymax))
-
                     ET.SubElement(obj, "confidence").text = "1.0"
-
+            
             tree = ET.ElementTree(root)
-            output_xml = os.path.join(output_folder, f"cam_{camera_id[0]}_{camera_id[1]}_distorted_{frame_id:08d}.xml")
+            output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
             tree.write(output_xml)
             print(f"Generated XML file: {output_xml}")
     
@@ -196,10 +192,10 @@ sync_ANA__existing_annotation
 sync_SYNC17APR0908__sync_ANA__existing_annotation
 """
 
-creation_method = "Worker_ID11undistortnov9"
+creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../Worker_ID11undistortnov9" 
+output_folder = "../../../IDENDOFLINE" 
 undistort = True  #might not work  
 
 #load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
