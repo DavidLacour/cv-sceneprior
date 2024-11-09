@@ -136,9 +136,18 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                 cuboid_2d =  cuboid_points2d
                 
                 #cuboid_2d = get_cuboid_from_ground_world2(world_point, calib,width , length, height, theta)
-                
-                if any(is_point_in_image(point, 0, 1920, 0, 1080) for point in cuboid_2d):
-                    clamped_cuboid = [clamp_coordinates(point, 0, 1920, 0, 1080) for point in cuboid_2d]
+                #here can you checkt that the size of the box is bigger than 30 for x and y
+
+
+                if any(is_point_in_image(point, 20, 1900, 20, 1060) for point in cuboid_2d):
+                    clamped_cuboid = [clamp_coordinates(point, 20, 1900, 20, 1060) for point in cuboid_2d]
+                    (xmin, ymin), (xmax, ymax) = get_bounding_box(clamped_cuboid)
+                    box_width = xmax - xmin
+                    box_height = ymax - ymin
+                    if box_width >= 30 and box_height >= 30:
+                        cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
+                    else:
+                        print(f"Skipping small bounding box for person {row['person_id']} in frame {frame_id} (size: {box_width:.1f}x{box_height:.1f})")
                     cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
 
         # Generate XML for each camera
@@ -205,7 +214,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../UTF83" 
+output_folder = "../../../NOSMALL" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
