@@ -142,16 +142,12 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
 
         # Generate XML for each camera
         # Generate XML for each camera
+        # Generate XML for each camera
         for cam_idx, cuboids in cuboids_2d.items():
             if not cuboids:
                 continue
                 
             root = ET.Element("annotation")
-            # Create XML declaration with double quotes
-            tree = ET.ElementTree(root)
-            tree.write(output_xml, xml_declaration=True, encoding='UTF-8',
-                    short_empty_elements=False,
-                    doctype='<?xml version="1.0" ?>')
             
             ET.SubElement(root, "folder").text = "VOC2007"
             camera_id = cam_params[cam_idx].id
@@ -184,11 +180,14 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     ET.SubElement(bndbox, "ymax").text = str(int(ymax))
                     ET.SubElement(obj, "confidence").text = "1.0"
             
+            xml_str = ET.tostring(root, encoding='unicode')
+            dom = minidom.parseString(xml_str)
+            pretty_xml = dom.toprettyxml(indent="    ")
+            
             output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
-            # Write with a custom XML declaration
-            with open(output_xml, 'w') as f:
-                f.write('<?xml version="1.0" ?>\n')
-                tree.write(f, encoding='unicode', xml_declaration=False)
+            
+            with open(output_xml, 'w', encoding='unicode') as f:
+                f.write(pretty_xml)
             print(f"Generated XML file: {output_xml}")
     
 # imported means the name contains imported 
@@ -204,7 +203,7 @@ sync_SYNC17APR0908__sync_ANA__existing_annotation
 creation_method = ""
 csv_file = "../../../AnnotationWorkerIvana.csv"
 params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibrations"
-output_folder = "../../../IDNOENCODING" 
+output_folder = "../../../ID" 
 undistort = True  #might not work  
 
 load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
