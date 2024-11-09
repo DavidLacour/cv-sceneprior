@@ -141,11 +141,18 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
 
         # Generate XML for each camera
+        # Generate XML for each camera
         for cam_idx, cuboids in cuboids_2d.items():
             if not cuboids:
                 continue
                 
             root = ET.Element("annotation")
+            # Create XML declaration with double quotes
+            tree = ET.ElementTree(root)
+            tree.write(output_xml, xml_declaration=True, encoding='UTF-8',
+                    short_empty_elements=False,
+                    doctype='<?xml version="1.0" ?>')
+            
             ET.SubElement(root, "folder").text = "VOC2007"
             camera_id = cam_params[cam_idx].id
             ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_undistorted_{frame_id:08d}.jpg"
@@ -177,9 +184,11 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     ET.SubElement(bndbox, "ymax").text = str(int(ymax))
                     ET.SubElement(obj, "confidence").text = "1.0"
             
-            tree = ET.ElementTree(root)
             output_xml = os.path.join(output_folder, f"frame{frame_id:08d}_cam{camera_id[0]}_{camera_id[1]}.xml")
-            tree.write(output_xml)
+            # Write with a custom XML declaration
+            with open(output_xml, 'w') as f:
+                f.write('<?xml version="1.0" ?>\n')
+                tree.write(f, encoding='unicode', xml_declaration=False)
             print(f"Generated XML file: {output_xml}")
     
 # imported means the name contains imported 
@@ -198,8 +207,8 @@ params_dir = "../../../invisiondata/multicam-gt/annotation_dset/13apr/calibratio
 output_folder = "../../../IDENDOFLINE" 
 undistort = True  #might not work  
 
-#load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
-#print("XML files generation completed.")
+load_csv_and_generate_xml(csv_file, params_dir, output_folder, creation_method,undistort)
+print("XML files generation completed.")
 
 import os
 import cv2
