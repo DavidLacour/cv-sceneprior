@@ -45,7 +45,7 @@ def zip_logs(log_dir, output_path):
 
                 
 class EarlyStopping:
-    def __init__(self, patience=100, min_delta=0.0001):
+    def __init__(self, patience=40, min_delta=0.0001):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
