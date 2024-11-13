@@ -139,12 +139,12 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                 #here can you checkt that the size of the box is bigger than 30 for x and y
 
 
-                if any(is_point_in_image(point, 10, 1910, 10, 1070) for point in cuboid_2d):
-                    clamped_cuboid = [clamp_coordinates(point, 10, 1910, 10, 1070) for point in cuboid_2d]
+                if any(is_point_in_image(point, 2, 1918, 10, 1078) for point in cuboid_2d):
+                    clamped_cuboid = [clamp_coordinates(point, 2, 1918, 18, 1078) for point in cuboid_2d]
                     (xmin, ymin), (xmax, ymax) = get_bounding_box(clamped_cuboid)
                     box_width = xmax - xmin
                     box_height = ymax - ymin
-                    if box_width >= 17 and box_height >= 17:
+                    if box_width >= 16 and box_height >= 16:
                         cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
                     else:
                         print(f"Skipping small bounding box for person {row['person_id']} in frame {frame_id} (size: {box_width:.1f}x{box_height:.1f})")

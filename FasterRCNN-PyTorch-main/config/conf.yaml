@@ -22,7 +22,7 @@ model_params:
   rpn_train_prenms_topk : 12000
   rpn_test_prenms_topk : 6000
   rpn_train_topk : 2000
-  rpn_test_topk : 300
+  rpn_test_topk : 100
   rpn_batch_size : 256
   rpn_pos_fraction : 0.5
   roi_iou_threshold : 0.5
