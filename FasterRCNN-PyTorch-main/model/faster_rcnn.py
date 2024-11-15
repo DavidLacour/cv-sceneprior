@@ -749,7 +749,7 @@ class ROIHead(nn.Module):
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         return pred_boxes, pred_labels, pred_scores
 
-def add_channel_to_vgg16(num_channels=4,pretrained=False):
+def add_channel_to_vgg16(num_channels=4,pretrained=True):
     vgg16 = torchvision.models.vgg16(pretrained)
     first_conv_layer = vgg16.features[0]
     new_conv_layer = nn.Conv2d(
