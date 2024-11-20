@@ -16,8 +16,36 @@ from datetime import datetime
 import shutil
 import zipfile
 from tools.infer import evaluate_map
-
+NUM_TO_KEEP = 10
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+def cleanup_old_checkpoints(log_dir, best_model_path,num_to_keep =NUM_TO_KEEP):
+    """
+    Delete old checkpoint files, keeping only the N most recent ones and the best model
+    
+    Args:
+        log_dir: Directory containing the checkpoints
+        num_to_keep: Number of recent checkpoints to keep
+        best_model_path: Path to the best model checkpoint (will be preserved)
+    """
+    checkpoints = [f for f in os.listdir(log_dir) if f.startswith('checkpoint_epoch_') and f.endswith('.pth')]
+    if len(checkpoints) <= num_to_keep:
+        return
+        
+    # Sort checkpoints by epoch number
+    checkpoints.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
+    
+    # Keep the most recent N checkpoints and the best model
+    checkpoints_to_delete = checkpoints[:-num_to_keep]
+    for ckpt in checkpoints_to_delete:
+        ckpt_path = os.path.join(log_dir, ckpt)
+        if ckpt_path != best_model_path:  # Don't delete the best model
+            try:
+                os.remove(ckpt_path)
+                print(f"Deleted old checkpoint: {ckpt}")
+            except Exception as e:
+                print(f"Error deleting {ckpt}: {str(e)}")
 
 class SubsetRandomSampler(Sampler):
     def __init__(self, dataset_size, num_samples):
@@ -42,7 +70,7 @@ def zip_logs(log_dir, output_path):
                 zipf.write(file_path, arcname)
 
 class EarlyStopping:
-    def __init__(self, patience=20, min_delta=0.0001):
+    def __init__(self, patience=NUM_TO_KEEP, min_delta=0.0001):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
@@ -62,6 +90,38 @@ class EarlyStopping:
             self.best_map = map_score
             self.best_epoch = epoch
             self.counter = 0
+
+def evaluate_loss(model, val_loader, device):
+    """
+    Calculate validation losses
+    """
+    model.eval()
+    rpn_classification_losses = []
+    rpn_localization_losses = []
+    frcnn_classification_losses = []
+    frcnn_localization_losses = []
+    
+    with torch.no_grad():
+        for im, target, fname in val_loader:
+            im = im.float().to(device)
+            target['bboxes'] = target['bboxes'].float().to(device)
+            target['labels'] = target['labels'].long().to(device)
+            
+            rpn_output, frcnn_output = model(im, target)
+            
+            rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
+            rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
+            frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
+            frcnn_localization_losses.append(frcnn_output['frcnn_localization_loss'].item())
+    
+    return {
+        'rpn_cls_loss': np.mean(rpn_classification_losses),
+        'rpn_loc_loss': np.mean(rpn_localization_losses),
+        'frcnn_cls_loss': np.mean(frcnn_classification_losses),
+        'frcnn_loc_loss': np.mean(frcnn_localization_losses),
+        'total_loss': np.mean(rpn_classification_losses) + np.mean(rpn_localization_losses) + 
+                     np.mean(frcnn_classification_losses) + np.mean(frcnn_localization_losses)
+    }
 
 def train(args):
     # Read the config file
@@ -98,7 +158,7 @@ def train(args):
         yaml.dump(config, f)
     
     writer = SummaryWriter(log_dir)
-    early_stopping = EarlyStopping()  # Initialize early stopping
+    early_stopping = EarlyStopping()
     
     seed = train_config['seed']
     torch.manual_seed(seed)
@@ -107,14 +167,25 @@ def train(args):
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
     
-    voc = VOCDataset('train',
-                     im_dir=dataset_config['im_train_path'],
-                     ann_dir=dataset_config['ann_train_path'])
+    # Initialize training dataset
+    train_dataset = VOCDataset('train',
+                              im_dir=dataset_config['im_train_path'],
+                              ann_dir=dataset_config['ann_train_path'])
     
-    train_dataset = DataLoader(voc,
-                             batch_size=1,
-                             shuffle=True,
-                             num_workers=2)
+    train_loader = DataLoader(train_dataset,
+                            batch_size=1,
+                            shuffle=True,
+                            num_workers=2)
+    
+    # Initialize validation dataset
+    val_dataset = VOCDataset('val',
+                            im_dir=dataset_config['im_val_path'],
+                            ann_dir=dataset_config['ann_val_path'])
+    
+    val_loader = DataLoader(val_dataset,
+                          batch_size=1,
+                          shuffle=False,
+                          num_workers=2)
     
     faster_rcnn_model = FasterRCNN(model_config,
                                   num_classes=dataset_config['num_classes'])
@@ -138,7 +209,8 @@ def train(args):
         f.write(f"Device: {device}\n")
         f.write(f"Number of epochs: {train_config['num_epochs']}\n")
         f.write(f"Learning rate: {train_config['lr']}\n")
-        f.write(f"Dataset size: {len(voc)}\n")
+        f.write(f"Training dataset size: {len(train_dataset)}\n")
+        f.write(f"Validation dataset size: {len(val_dataset)}\n")
     
     acc_steps = train_config['acc_steps']
     num_epochs = train_config['num_epochs']
@@ -156,7 +228,9 @@ def train(args):
             frcnn_localization_losses = []
             optimizer.zero_grad()
             
-            for im, target, fname in tqdm(train_dataset):
+            # Training phase
+            faster_rcnn_model.train()
+            for im, target, fname in tqdm(train_loader, desc=f'Training Epoch {epoch}'):
                 im = im.float().to(device)
                 target['bboxes'] = target['bboxes'].float().to(device)
                 target['labels'] = target['labels'].long().to(device)
@@ -166,7 +240,6 @@ def train(args):
                 frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
                 loss = rpn_loss + frcnn_loss
                 
-                # Accumulate losses for epoch-level logging
                 rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
                 rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
                 frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
@@ -180,31 +253,45 @@ def train(args):
                 step_count += 1
                 global_step += 1
 
+            # Calculate training losses
+            train_losses = {
+                'rpn_cls_loss': np.mean(rpn_classification_losses),
+                'rpn_loc_loss': np.mean(rpn_localization_losses),
+                'frcnn_cls_loss': np.mean(frcnn_classification_losses),
+                'frcnn_loc_loss': np.mean(frcnn_localization_losses),
+                'total_loss': np.mean(rpn_classification_losses) + np.mean(rpn_localization_losses) + 
+                             np.mean(frcnn_classification_losses) + np.mean(frcnn_localization_losses)
+            }
+            
+            # Validation phase
+            val_losses = evaluate_loss(faster_rcnn_model, val_loader, device)
+            
             epoch_time = time.time() - epoch_start_time
             print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
             
-            # Calculate and log epoch metrics
-            epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
-            epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
-            epoch_frcnn_cls_loss = np.mean(frcnn_classification_losses)
-            epoch_frcnn_loc_loss = np.mean(frcnn_localization_losses)
+            # Log metrics to TensorBoard
+            writer.add_scalar('Loss/Train/RPN_Classification', train_losses['rpn_cls_loss'], epoch)
+            writer.add_scalar('Loss/Train/RPN_Localization', train_losses['rpn_loc_loss'], epoch)
+            writer.add_scalar('Loss/Train/FRCNN_Classification', train_losses['frcnn_cls_loss'], epoch)
+            writer.add_scalar('Loss/Train/FRCNN_Localization', train_losses['frcnn_loc_loss'], epoch)
+            writer.add_scalar('Loss/Train/Total', train_losses['total_loss'], epoch)
             
-            writer.add_scalar('Loss/Epoch/RPN_Classification', epoch_rpn_cls_loss, epoch)
-            writer.add_scalar('Loss/Epoch/RPN_Localization', epoch_rpn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
+            writer.add_scalar('Loss/Val/RPN_Classification', val_losses['rpn_cls_loss'], epoch)
+            writer.add_scalar('Loss/Val/RPN_Localization', val_losses['rpn_loc_loss'], epoch)
+            writer.add_scalar('Loss/Val/FRCNN_Classification', val_losses['frcnn_cls_loss'], epoch)
+            writer.add_scalar('Loss/Val/FRCNN_Localization', val_losses['frcnn_loc_loss'], epoch)
+            writer.add_scalar('Loss/Val/Total', val_losses['total_loss'], epoch)
+            
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
             
             # Evaluate mAP and handle early stopping
-            # save because evaluae_map use saved weights 
-            # if epoch > 9 : 
             model_path = os.path.join(train_config['task_name'], train_config['ckpt_name'])
             torch.save(faster_rcnn_model.state_dict(), model_path)
         
-            map_score = evaluate_map(args,validation_set=True)
-            writer.add_scalar('map', map_score, epoch)
+            map_score = evaluate_map(args, validation_set=True)
+            writer.add_scalar('Metrics/mAP', map_score, epoch)
             early_stopping(map_score, epoch)
-            faster_rcnn_model.train()
+            
             # Save checkpoint
             checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
             torch.save({
@@ -214,6 +301,8 @@ def train(args):
                 'scheduler_state_dict': scheduler.state_dict(),
                 'global_step': global_step,
                 'map_score': map_score,
+                'train_losses': train_losses,
+                'val_losses': val_losses,
                 'config': config
             }, checkpoint_path)
             
@@ -226,11 +315,18 @@ def train(args):
             # Update training info file
             with open(train_info_path, 'a') as f:
                 f.write(f"\nEpoch {epoch} completed in {epoch_time:.2f}s\n")
-                f.write(f"Average losses:\n")
-                f.write(f"  RPN Classification: {epoch_rpn_cls_loss:.4f}\n")
-                f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
-                f.write(f"  FRCNN Classification: {epoch_frcnn_cls_loss:.4f}\n")
-                f.write(f"  FRCNN Localization: {epoch_frcnn_loc_loss:.4f}\n")
+                f.write(f"Training losses:\n")
+                f.write(f"  RPN Classification: {train_losses['rpn_cls_loss']:.4f}\n")
+                f.write(f"  RPN Localization: {train_losses['rpn_loc_loss']:.4f}\n")
+                f.write(f"  FRCNN Classification: {train_losses['frcnn_cls_loss']:.4f}\n")
+                f.write(f"  FRCNN Localization: {train_losses['frcnn_loc_loss']:.4f}\n")
+                f.write(f"  Total: {train_losses['total_loss']:.4f}\n")
+                f.write(f"Validation losses:\n")
+                f.write(f"  RPN Classification: {val_losses['rpn_cls_loss']:.4f}\n")
+                f.write(f"  RPN Localization: {val_losses['rpn_loc_loss']:.4f}\n")
+                f.write(f"  FRCNN Classification: {val_losses['frcnn_cls_loss']:.4f}\n")
+                f.write(f"  FRCNN Localization: {val_losses['frcnn_loc_loss']:.4f}\n")
+                f.write(f"  Total: {val_losses['total_loss']:.4f}\n")
                 f.write(f"  mAP: {map_score:.4f}\n")
             
             scheduler.step()
@@ -239,6 +335,8 @@ def train(args):
             if early_stopping.early_stop:
                 print(f"Early stopping triggered at epoch {epoch}. Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
                 break
+            # After saving checkpoint
+            cleanup_old_checkpoints(log_dir, best_model_path=best_model_path)
 
     except Exception as e:
         print(f"Training interrupted: {str(e)}")
