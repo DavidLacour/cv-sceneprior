@@ -216,7 +216,7 @@ def train(args):
             faster_rcnn_model.train()
            
             
-            print(f"Epoch {epoch}: Validation Loss = {val_loss}")
+           
 
             epoch_time = time.time() - epoch_start_time
             print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
@@ -246,6 +246,11 @@ def train(args):
             writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation',  val_epoch_frcnn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/total_localization_validation',  val_epoch_rpn_loc_loss +  val_epoch_frcnn_loc_loss, epoch )
             
+
+
+            print(f"Epoch {epoch}: trianLoss = {epoch_frcnn_loc_loss}")
+            print(f"Epoch {epoch}: Validation Loss = {val_epoch_frcnn_loc_loss}")
+
             # Evaluate mAP and handle early stopping
             # save because evaluae_map use saved weights 
             # if epoch > 9 : 
