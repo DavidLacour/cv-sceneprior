@@ -417,18 +417,14 @@ class RegionProposalNetwork(nn.Module):
     
     def forward(self, image, feat, target=None):
         batch_size = feat.shape[0]
-        print("forward rpn ")
-        # Call RPN layers
-        rpn_feat = nn.ReLU()(self.rpn_conv(feat))
         
-        # Get predictions
+        rpn_feat = nn.ReLU()(self.rpn_conv(feat))
         cls_scores = self.cls_layer(rpn_feat)
         box_transform_pred = self.bbox_reg_layer(rpn_feat)
         
         h, w = feat.shape[2:]
         A = self.num_anchors
         
-        # Reshape predictions to match anchors
         cls_scores = cls_scores.reshape(batch_size, A, h, w)
         box_transform_pred = box_transform_pred.reshape(batch_size, A * 4, h, w)
         
@@ -438,23 +434,19 @@ class RegionProposalNetwork(nn.Module):
         
         for i in range(batch_size):
             anchors = self.generate_anchors(image[i:i+1], feat[i:i+1])
-            
-            # Reshape current image predictions
             curr_cls_scores = cls_scores[i].permute(1, 2, 0).reshape(-1)
-            curr_box_pred = box_transform_pred[i].reshape(4, A, h, w)
-            curr_box_pred = curr_box_pred.permute(1, 2, 3, 0).reshape(-1, 4)
+            curr_box_pred = box_transform_pred[i].reshape(A * 4, h, w).permute(1, 2, 0).reshape(-1, 4)
             
-            # Transform anchors using predictions
-            curr_proposals = curr_box_pred  # Direct use without transformation during training
             if not self.training:
                 curr_proposals = apply_regression_pred_to_anchors_or_proposals(
                     curr_box_pred.unsqueeze(1),
                     anchors
                 ).squeeze(1)
+            else:
+                curr_proposals = anchors
             
-            # Filter proposals
             filtered_proposals, filtered_scores = self.filter_proposals(
-                curr_proposals if not self.training else anchors,
+                curr_proposals,
                 curr_cls_scores,
                 image[i].shape
             )
@@ -479,6 +471,9 @@ class RegionProposalNetwork(nn.Module):
                 sampled_idxs = torch.where(sampled_pos_idx_mask | sampled_neg_idx_mask)[0]
                 
                 if sampled_idxs.numel() > 0:
+                    valid_labels = labels[sampled_idxs]
+                    valid_labels = valid_labels.clamp(min=0)
+                    
                     regression_targets = boxes_to_transformation_targets(
                         matched_gt_boxes[sampled_pos_idx_mask],
                         anchors[sampled_pos_idx_mask]
@@ -493,22 +488,23 @@ class RegionProposalNetwork(nn.Module):
                     
                     cls_loss = torch.nn.functional.binary_cross_entropy_with_logits(
                         curr_cls_scores[sampled_idxs],
-                        labels[sampled_idxs]
+                        valid_labels,
+                        reduction='mean'
                     )
                     
                     batch_losses['rpn_classification_loss'] += cls_loss
                     batch_losses['rpn_localization_loss'] += loc_loss
         
-        rpn_output = {
-            'proposals': batch_proposals,
-            'scores': batch_scores
-        }
-        
-        if self.training and target is not None:
-            rpn_output['rpn_classification_loss'] = batch_losses['rpn_classification_loss'] / batch_size
-            rpn_output['rpn_localization_loss'] = batch_losses['rpn_localization_loss'] / batch_size
-        
-        return rpn_output
+                    if self.training and target is not None:
+                        if batch_size > 0:
+                            batch_losses['rpn_classification_loss'] /= batch_size
+                            batch_losses['rpn_localization_loss'] /= batch_size
+                    
+                    return {
+                        'proposals': batch_proposals,
+                        'scores': batch_scores,
+                        **batch_losses if self.training and target is not None else {}
+                    }
 
 class ROIHead(nn.Module):
     r"""
@@ -553,6 +549,7 @@ class ROIHead(nn.Module):
             labels: (number_of_proposals)
             matched_gt_boxes: (number_of_proposals, 4)
         """
+        "assign"
         # Get IOU Matrix between gt boxes and proposals
         iou_matrix = get_iou(gt_boxes, proposals)
         # For each gt box proposal find best matching gt box
@@ -581,8 +578,9 @@ class ROIHead(nn.Module):
         
         return labels, matched_gt_boxes_for_proposals
     
+
     def forward(self, feat, proposals, image_shape, target=None):
-        print("forward roi ")
+        "forward roi "
         batch_size = feat.shape[0]
         batch_outputs = {}
         batch_losses = {'frcnn_classification_loss': 0, 'frcnn_localization_loss': 0}
@@ -598,11 +596,11 @@ class ROIHead(nn.Module):
             if self.training and curr_target is not None:
                 curr_proposals = torch.cat([curr_proposals, curr_target['bboxes'].squeeze(0)], dim=0)
                 labels, matched_gt_boxes = self.assign_target_to_proposals(
-                    curr_proposals, 
+                    curr_proposals,
                     curr_target['bboxes'].squeeze(0),
                     curr_target['labels']
                 )
-                
+
                 sampled_neg_idx_mask, sampled_pos_idx_mask = sample_positive_negative(
                     labels,
                     positive_count=self.roi_pos_count,
@@ -612,17 +610,15 @@ class ROIHead(nn.Module):
                 sampled_idxs = torch.where(sampled_pos_idx_mask | sampled_neg_idx_mask)[0]
                 if sampled_idxs.numel() == 0:
                     continue
-                    
+
                 curr_proposals = curr_proposals[sampled_idxs]
                 labels = labels[sampled_idxs]
                 matched_gt_boxes = matched_gt_boxes[sampled_idxs]
 
-            # Format proposals for ROI pooling
             rois = torch.zeros((len(curr_proposals), 5), device=curr_feat.device)
-            rois[:, 0] = i  # batch index
+            rois[:, 0] = i
             rois[:, 1:] = curr_proposals
 
-            # ROI pooling
             roi_feats = torchvision.ops.roi_pool(
                 curr_feat,
                 rois,
@@ -630,59 +626,54 @@ class ROIHead(nn.Module):
                 spatial_scale=feat.shape[-1] / image_shape[-1]
             )
 
-            # Forward through layers
             roi_feats = roi_feats.flatten(start_dim=1)
             fc6_out = torch.nn.functional.relu(self.fc6(roi_feats))
             fc7_out = torch.nn.functional.relu(self.fc7(fc6_out))
-            cls_scores = self.cls_layer(fc7_out)
-            box_transform_pred = self.bbox_reg_layer(fc7_out)
-            box_transform_pred = box_transform_pred.reshape(-1, self.num_classes, 4)
+            cls_scores = self.cls_layer(fc7_out)  # [N, num_classes]
+            box_transform_pred = self.bbox_reg_layer(fc7_out).reshape(-1, self.num_classes, 4)
 
             if self.training and curr_target is not None:
-                # Classification loss
+                # Handle binary classification (background/person)
+                labels = labels.long()  # Ensure long type
                 cls_loss = torch.nn.functional.cross_entropy(cls_scores, labels)
-                
-                # Regression loss only for positive samples
-                fg_idxs = torch.where(labels > 0)[0]
+
+                fg_idxs = torch.where(labels == 1)[0]  # Only person class
                 if fg_idxs.numel() > 0:
                     regression_targets = boxes_to_transformation_targets(
                         matched_gt_boxes[fg_idxs],
                         curr_proposals[fg_idxs]
                     )
-                    # Match dimensions for loss calculation
+                    
                     pred_boxes_for_loss = box_transform_pred[fg_idxs, labels[fg_idxs]]
-                    regression_targets = regression_targets.reshape(-1, 4)
                     loc_loss = torch.nn.functional.smooth_l1_loss(
                         pred_boxes_for_loss,
                         regression_targets,
                         beta=1/9,
                         reduction="sum"
-                    ) / labels.numel()
+                    ) / max(1, labels.numel())
                 else:
                     loc_loss = torch.tensor(0.0, device=cls_scores.device)
-                
+
                 batch_losses['frcnn_classification_loss'] += cls_loss
                 batch_losses['frcnn_localization_loss'] += loc_loss
-            
+
             else:
-                pred_boxes = apply_regression_pred_to_anchors_or_proposals(
-                    box_transform_pred,
-                    curr_proposals
-                )
-                pred_scores = torch.nn.functional.softmax(cls_scores, dim=-1)
-                
-                pred_boxes = pred_boxes[:, 1:]  # Remove background class
+                pred_boxes = apply_regression_pred_to_anchors_or_proposals(box_transform_pred, curr_proposals)
+                pred_scores = torch.nn.functional.softmax(cls_scores, dim=1)
+
+                # Keep only person class predictions
+                pred_boxes = pred_boxes[:, 1:]  # Remove background
                 pred_scores = pred_scores[:, 1:]
-                
+
                 pred_boxes = pred_boxes.reshape(-1, 4)
                 pred_scores = pred_scores.reshape(-1)
-                
+
                 pred_boxes, pred_labels, pred_scores = self.filter_predictions(
                     pred_boxes,
                     torch.ones(len(pred_boxes), dtype=torch.int64, device=pred_boxes.device),
                     pred_scores
                 )
-                
+
                 batch_outputs[i] = {
                     'boxes': pred_boxes,
                     'scores': pred_scores,
@@ -694,7 +685,7 @@ class ROIHead(nn.Module):
                 batch_losses['frcnn_classification_loss'] /= batch_size
                 batch_losses['frcnn_localization_loss'] /= batch_size
             return batch_losses
-        
+
         return batch_outputs
 
 
