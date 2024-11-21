@@ -221,7 +221,7 @@ def train(args):
     
     train_dataset = VOCDataset('train',
                      im_dir=dataset_config['im_train_path'],
-                     ann_dir=dataset_config['ann_train_path'],depth_dir=train_config['depth_dir'])
+                     ann_dir=dataset_config['ann_train_path'],depth_dir=dataset_config['depth_dir'])
     
     train_dataloader = DataLoader(train_dataset,
                              batch_size=1,
@@ -230,7 +230,7 @@ def train(args):
     
     val_dataset = VOCDataset('val',
                      im_dir=dataset_config['im_val_path'],
-                     ann_dir=dataset_config['ann_val_path'],depth_dir=train_config['depth_dir'])
+                     ann_dir=dataset_config['ann_val_path'],depth_dir=dataset_config['depth_dir'])
     
     val_dataloader = DataLoader(val_dataset,
                              batch_size=1,
