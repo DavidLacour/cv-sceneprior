@@ -195,7 +195,7 @@ def train(args):
                 step_count += 1
                 global_step += 1
             
-            faster_rcnn_model.eval()  # Set model to evaluation mode
+            # faster_rcnn_model.eval()  # Set model to evaluation mode crahes
             val_loss = 0.0
             with torch.no_grad():  # Disable gradient computation
                 for val_im, val_target, val_fname in tqdm(val_dataloader):

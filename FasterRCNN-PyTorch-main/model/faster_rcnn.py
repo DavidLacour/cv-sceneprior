@@ -600,29 +600,29 @@ class ROIHead(nn.Module):
         :param target:
         :return:
         """
-        if self.training and target is not None:
-            # Add ground truth to proposals
-            proposals = torch.cat([proposals, target['bboxes'][0]], dim=0)
-            
-            gt_boxes = target['bboxes'][0]
-            gt_labels = target['labels'][0]
-            
-            labels, matched_gt_boxes_for_proposals = self.assign_target_to_proposals(proposals, gt_boxes, gt_labels)
-            
-            sampled_neg_idx_mask, sampled_pos_idx_mask = sample_positive_negative(labels,
-                                                                                  positive_count=self.roi_pos_count,
-                                                                                  total_count=self.roi_batch_size)
-            
-            sampled_idxs = torch.where(sampled_pos_idx_mask | sampled_neg_idx_mask)[0]
-            
-            # Keep only sampled proposals
-            proposals = proposals[sampled_idxs]
-            labels = labels[sampled_idxs]
-            matched_gt_boxes_for_proposals = matched_gt_boxes_for_proposals[sampled_idxs]
-            regression_targets = boxes_to_transformation_targets(matched_gt_boxes_for_proposals, proposals)
-            # regression_targets -> (sampled_training_proposals, 4)
-            # matched_gt_boxes_for_proposals -> (sampled_training_proposals, 4)
+        #if self.training and target is not None:
+        # Add ground truth to proposals
+        proposals = torch.cat([proposals, target['bboxes'][0]], dim=0)
         
+        gt_boxes = target['bboxes'][0]
+        gt_labels = target['labels'][0]
+        
+        labels, matched_gt_boxes_for_proposals = self.assign_target_to_proposals(proposals, gt_boxes, gt_labels)
+        
+        sampled_neg_idx_mask, sampled_pos_idx_mask = sample_positive_negative(labels,
+                                                                                positive_count=self.roi_pos_count,
+                                                                                total_count=self.roi_batch_size)
+        
+        sampled_idxs = torch.where(sampled_pos_idx_mask | sampled_neg_idx_mask)[0]
+        
+        # Keep only sampled proposals
+        proposals = proposals[sampled_idxs]
+        labels = labels[sampled_idxs]
+        matched_gt_boxes_for_proposals = matched_gt_boxes_for_proposals[sampled_idxs]
+        regression_targets = boxes_to_transformation_targets(matched_gt_boxes_for_proposals, proposals)
+        # regression_targets -> (sampled_training_proposals, 4)
+        # matched_gt_boxes_for_proposals -> (sampled_training_proposals, 4)
+    
         # Get desired scale to pass to roi pooling function
         # For vgg16 case this would be 1/16 (0.0625)
         size = feat.shape[-2:]
@@ -649,58 +649,58 @@ class ROIHead(nn.Module):
         num_boxes, num_classes = cls_scores.shape
         box_transform_pred = box_transform_pred.reshape(num_boxes, num_classes, 4)
         frcnn_output = {}
-        if self.training and target is not None:
-            classification_loss = torch.nn.functional.cross_entropy(cls_scores, labels)
-            
-            # Compute localization loss only for non-background labelled proposals
-            fg_proposals_idxs = torch.where(labels > 0)[0]
-            # Get class labels for these positive proposals
-            fg_cls_labels = labels[fg_proposals_idxs]
-            
-            localization_loss = torch.nn.functional.smooth_l1_loss(
-                box_transform_pred[fg_proposals_idxs, fg_cls_labels],
-                regression_targets[fg_proposals_idxs],
-                beta=1/9,
-                reduction="sum",
-            )
-            localization_loss = localization_loss / labels.numel()
-            frcnn_output['frcnn_classification_loss'] = classification_loss
-            frcnn_output['frcnn_localization_loss'] = localization_loss
+        #if self.training and target is not None:
+        classification_loss = torch.nn.functional.cross_entropy(cls_scores, labels)
         
-        if self.training:
-            return frcnn_output
-        else:
-            device = cls_scores.device
-            # Apply transformation predictions to proposals
-            pred_boxes = apply_regression_pred_to_anchors_or_proposals(box_transform_pred, proposals)
-            pred_scores = torch.nn.functional.softmax(cls_scores, dim=-1)
-            
-            # Clamp box to image boundary
-            pred_boxes = clamp_boxes_to_image_boundary(pred_boxes, image_shape)
-            
-            # create labels for each prediction
-            pred_labels = torch.arange(num_classes, device=device)
-            pred_labels = pred_labels.view(1, -1).expand_as(pred_scores)
-            
-            # remove predictions with the background label
-            pred_boxes = pred_boxes[:, 1:]
-            pred_scores = pred_scores[:, 1:]
-            pred_labels = pred_labels[:, 1:]
-            
-            # pred_boxes -> (number_proposals, num_classes-1, 4)
-            # pred_scores -> (number_proposals, num_classes-1)
-            # pred_labels -> (number_proposals, num_classes-1)
-            
-            # batch everything, by making every class prediction be a separate instance
-            pred_boxes = pred_boxes.reshape(-1, 4)
-            pred_scores = pred_scores.reshape(-1)
-            pred_labels = pred_labels.reshape(-1)
-            
-            pred_boxes, pred_labels, pred_scores = self.filter_predictions(pred_boxes, pred_labels, pred_scores)
-            frcnn_output['boxes'] = pred_boxes
-            frcnn_output['scores'] = pred_scores
-            frcnn_output['labels'] = pred_labels
-            return frcnn_output
+        # Compute localization loss only for non-background labelled proposals
+        fg_proposals_idxs = torch.where(labels > 0)[0]
+        # Get class labels for these positive proposals
+        fg_cls_labels = labels[fg_proposals_idxs]
+        
+        localization_loss = torch.nn.functional.smooth_l1_loss(
+            box_transform_pred[fg_proposals_idxs, fg_cls_labels],
+            regression_targets[fg_proposals_idxs],
+            beta=1/9,
+            reduction="sum",
+        )
+        localization_loss = localization_loss / labels.numel()
+        frcnn_output['frcnn_classification_loss'] = classification_loss
+        frcnn_output['frcnn_localization_loss'] = localization_loss
+        
+        #if self.training:
+        #return frcnn_output
+        #else:
+        device = cls_scores.device
+        # Apply transformation predictions to proposals
+        pred_boxes = apply_regression_pred_to_anchors_or_proposals(box_transform_pred, proposals)
+        pred_scores = torch.nn.functional.softmax(cls_scores, dim=-1)
+        
+        # Clamp box to image boundary
+        pred_boxes = clamp_boxes_to_image_boundary(pred_boxes, image_shape)
+        
+        # create labels for each prediction
+        pred_labels = torch.arange(num_classes, device=device)
+        pred_labels = pred_labels.view(1, -1).expand_as(pred_scores)
+        
+        # remove predictions with the background label
+        pred_boxes = pred_boxes[:, 1:]
+        pred_scores = pred_scores[:, 1:]
+        pred_labels = pred_labels[:, 1:]
+        
+        # pred_boxes -> (number_proposals, num_classes-1, 4)
+        # pred_scores -> (number_proposals, num_classes-1)
+        # pred_labels -> (number_proposals, num_classes-1)
+        
+        # batch everything, by making every class prediction be a separate instance
+        pred_boxes = pred_boxes.reshape(-1, 4)
+        pred_scores = pred_scores.reshape(-1)
+        pred_labels = pred_labels.reshape(-1)
+        
+        pred_boxes, pred_labels, pred_scores = self.filter_predictions(pred_boxes, pred_labels, pred_scores)
+        frcnn_output['boxes'] = pred_boxes
+        frcnn_output['scores'] = pred_scores
+        frcnn_output['labels'] = pred_labels
+        return frcnn_output
     
     def filter_predictions(self, pred_boxes, pred_labels, pred_scores):
         r"""
@@ -811,13 +811,16 @@ class FasterRCNN(nn.Module):
     
     def forward(self, image, target=None):
         old_shape = image.shape[-2:]
+        image, bboxes = self.normalize_resize_image_and_boxes(image, target['bboxes'])
+        target['bboxes'] = bboxes
+        """
         if self.training:
             # Normalize and resize boxes
             image, bboxes = self.normalize_resize_image_and_boxes(image, target['bboxes'])
             target['bboxes'] = bboxes
         else:
             image, _ = self.normalize_resize_image_and_boxes(image, None)
-        
+        """
         # Call backbone
         feat = self.backbone(image)
         
