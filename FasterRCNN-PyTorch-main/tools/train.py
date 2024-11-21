@@ -149,7 +149,7 @@ def train(args):
         f.write(f"Device: {device}\n")
         f.write(f"Number of epochs: {train_config['num_epochs']}\n")
         f.write(f"Learning rate: {train_config['lr']}\n")
-        f.write(f"Dataset size: {len(voc)}\n")
+        f.write(f"Dataset size: {len(train_dataset)}\n")
     
     acc_steps = train_config['acc_steps']
     num_epochs = train_config['num_epochs']
