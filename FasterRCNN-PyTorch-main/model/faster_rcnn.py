@@ -729,7 +729,7 @@ class ROIHead(nn.Module):
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         
         # Remove small boxes
-        min_size = 16
+        min_size = 8
         ws, hs = pred_boxes[:, 2] - pred_boxes[:, 0], pred_boxes[:, 3] - pred_boxes[:, 1]
         keep = (ws >= min_size) & (hs >= min_size)
         keep = torch.where(keep)[0]

@@ -6,6 +6,7 @@ dataset_params:
   im_val_path: '../../../../16pminout/val_dataset/JPEGImages'
   ann_val_path: '../../../../16pminout/val_dataset/Annotations'
   depth_path:  '../../../../depthmaps'
+
   num_classes : 2 # number_classes + background
 
 model_params:
@@ -35,10 +36,14 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../tasks_16pminpretrained'
+  task_name: '../../task_16pminpretrained'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
   lr_steps : [12, 16]
   lr: 0.001
-  ckpt_name: 'model_weights.pth'
+  ckpt_name: 'model_weigths.pth'
+  batch_size : 8
+  sampler : True
+  num_samples_per_epoch : 1000
+  patience : 10
