@@ -244,7 +244,7 @@ def train(args):
             writer.add_scalar('Loss/Epoch/RPN_Localization_validation', val_epoch_rpn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation',  val_epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation',  val_epoch_frcnn_loc_loss, epoch)
-            writer.add_scalart('Loss/Epoch/total_localization_validation',  val_epoch_rpn_loc_loss +  val_epoch_frcnn_loc_loss, epoch )
+            writer.add_scalar('Loss/Epoch/total_localization_validation',  val_epoch_rpn_loc_loss +  val_epoch_frcnn_loc_loss, epoch )
             
             # Evaluate mAP and handle early stopping
             # save because evaluae_map use saved weights 
