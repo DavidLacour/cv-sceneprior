@@ -9,20 +9,13 @@ from tqdm import tqdm
 from dataset.voc import VOCDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
-<<<<<<< HEAD
-from datetime import datetime
-from torch.utils.tensorboard import SummaryWriter
-import shutil
-import zipfile
-import time
-=======
+
 from torch.utils.data import Sampler
 from torch.utils.tensorboard import SummaryWriter
 import time
 from datetime import datetime
 import shutil
 import zipfile
->>>>>>> nodepthmap
 from tools.infer import evaluate_map
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
