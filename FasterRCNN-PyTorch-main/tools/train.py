@@ -63,6 +63,37 @@ class EarlyStopping:
             self.best_epoch = epoch
             self.counter = 0
 
+
+def collate_fn(batch):
+    """
+    Custom collate function to handle batches with different numbers of annotations.
+    
+    Args:
+        batch: List of tuples (image_tensor, targets_dict, filename)
+            - image_tensor: (C, H, W)
+            - targets_dict: Contains 'bboxes' and 'labels' tensors
+            - filename: String path
+            
+    Returns:
+        Tuple of (batched_images, batched_targets, filenames)
+    """
+    images = []
+    targets = []
+    filenames = []
+    
+    for image, target, filename in batch:
+        images.append(image)
+        targets.append({
+            'bboxes': target['bboxes'],
+            'labels': target['labels']
+        })
+        filenames.append(filename)
+        
+    # Stack images into a single tensor (N, C, H, W)
+    images = torch.stack(images, dim=0)
+    
+    return images, targets, filenames
+
 def train(args):
     # Read the config file
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
@@ -111,20 +142,25 @@ def train(args):
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'])
     
-    train_dataloader = DataLoader(train_dataset,
-                             batch_size=1,
-                             shuffle=True,
-                             num_workers=2)
-    
     val_dataset = VOCDataset('val',
                      im_dir=dataset_config['im_val_path'],
                      ann_dir=dataset_config['ann_val_path'])
     
-    val_dataloader = DataLoader(val_dataset,
-                             batch_size=1,
-                             shuffle=True,
-                             num_workers=2)
-    
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=train_config['batch_size'],  # Now can be > 1
+        shuffle=True,
+        num_workers=2,
+        collate_fn=collate_fn
+    )
+
+    val_dataloader = DataLoader(
+        val_dataset, 
+        batch_size=train_config['batch_size'],
+        shuffle=True,
+        num_workers=2,
+        collate_fn=collate_fn
+)
 
     
     faster_rcnn_model = FasterRCNN(model_config,
@@ -171,11 +207,14 @@ def train(args):
             val_frcnn_localization_losses = []
             optimizer.zero_grad()
             
-            for im, target, fname in tqdm(train_dataloader):
+            for im, targets, fname in tqdm(train_dataloader):
                 im = im.float().to(device)
-                target['bboxes'] = target['bboxes'].float().to(device)
-                target['labels'] = target['labels'].long().to(device)
-                rpn_output, frcnn_output = faster_rcnn_model(im, target)
+                # Handle batch of targets
+                for i in range(len(targets)):
+                    targets[i]['bboxes'] = targets[i]['bboxes'].float().to(device)
+                    targets[i]['labels'] = targets[i]['labels'].long().to(device)
+                
+                rpn_output, frcnn_output = faster_rcnn_model(im, targets)
                 
                 rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
                 frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
@@ -195,16 +234,17 @@ def train(args):
                 step_count += 1
                 global_step += 1
             
-            # faster_rcnn_model.eval()  # Set model to evaluation mode crahes
+            # Validation loop
             val_loss = 0.0
-            with torch.no_grad():  # Disable gradient computation
-                for val_im, val_target, val_fname in tqdm(val_dataloader):
+            with torch.no_grad():
+                for val_im, val_targets, val_fname in tqdm(val_dataloader):
                     val_im = val_im.float().to(device)
-                    val_target['bboxes'] = val_target['bboxes'].float().to(device)
-                    val_target['labels'] = val_target['labels'].long().to(device)
+                    # Handle batch of validation targets
+                    for i in range(len(val_targets)):
+                        val_targets[i]['bboxes'] = val_targets[i]['bboxes'].float().to(device)
+                        val_targets[i]['labels'] = val_targets[i]['labels'].long().to(device)
                     
-                    # Forward pass
-                    val_rpn_output, val_frcnn_output = faster_rcnn_model(val_im, val_target)
+                    val_rpn_output, val_frcnn_output = faster_rcnn_model(val_im, val_targets)
                     val_rpn_classification_losses.append(val_rpn_output['rpn_classification_loss'])
                     val_rpn_localization_losses.append(val_rpn_output['rpn_localization_loss'])
                     val_frcnn_classification_losses.append(val_frcnn_output['frcnn_classification_loss'])

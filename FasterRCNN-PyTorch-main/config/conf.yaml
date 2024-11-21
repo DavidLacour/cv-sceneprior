@@ -44,4 +44,6 @@ train_params:
   batch_size : 8
   sampler : True
   num_samples_per_epoch : 1000
+  batch_size: 2
+  patience: 10
 
