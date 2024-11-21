@@ -79,6 +79,7 @@ def train(args):
     dataset_config = config['dataset_params']
     model_config = config['model_params']
     train_config = config['train_params']
+    patience = train_config['patience']
     
     # Create unique run name with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -98,7 +99,7 @@ def train(args):
         yaml.dump(config, f)
     
     writer = SummaryWriter(log_dir)
-    early_stopping = EarlyStopping()  # Initialize early stopping
+    early_stopping = EarlyStopping(patience)  # Initialize early stopping
     
     seed = train_config['seed']
     torch.manual_seed(seed)
