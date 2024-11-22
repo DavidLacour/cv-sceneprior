@@ -745,8 +745,23 @@ class FasterRCNN(nn.Module):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
         pretrained=True
-        vgg16 = torchvision.models.vgg16(pretrained=pretrained)
-        self.backbone = vgg16.features[:-1]
+        #vgg16 = torchvision.models.vgg16(pretrained=pretrained)
+        #self.backbone = vgg16.features[:-1]
+        
+        
+        # Remove the final fully connected layer and average pooling
+        # Get ResNet backbone and combine with reduction layer
+        resnet = torchvision.models.resnet50(pretrained=pretrained)
+        modules = list(resnet.children())[:-2]  # Get ResNet layers
+        modules.extend([                        # Add reduction layers
+            nn.Conv2d(2048, 512, kernel_size=1, stride=1, bias=False),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True)
+        ])
+        self.backbone = nn.Sequential(*modules)
+        
+        #self.backbone = nn.Sequential(*modules)
+
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
                                          scales=model_config['scales'],
                                          aspect_ratios=model_config['aspect_ratios'],
