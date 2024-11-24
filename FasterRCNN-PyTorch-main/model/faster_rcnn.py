@@ -749,9 +749,14 @@ class ROIHead(nn.Module):
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         return pred_boxes, pred_labels, pred_scores
 
-def add_channel_to_vgg16(num_channels=4,pretrained=True):
-    vgg16 = torchvision.models.vgg16(pretrained)
-    first_conv_layer = vgg16.features[0]
+def add_channel_to_resnet(num_channels=4, pretrained=True):
+    # Load pretrained ResNet
+    resnet = torchvision.models.resnet50(pretrained=pretrained)
+    
+    # Get the first conv layer
+    first_conv_layer = resnet.conv1
+    
+    # Create new conv layer with desired number of input channels
     new_conv_layer = nn.Conv2d(
         in_channels=num_channels,
         out_channels=first_conv_layer.out_channels,
@@ -760,19 +765,36 @@ def add_channel_to_vgg16(num_channels=4,pretrained=True):
         padding=first_conv_layer.padding,
         bias=first_conv_layer.bias is not None
     )
+    
     # Copy the weights from the original layer to the new layer
     with torch.no_grad():
         new_conv_layer.weight[:, :3] = first_conv_layer.weight
         if num_channels > 3:
             # Initialize the weights for the additional channel(s)
-            new_conv_layer.weight[:, 3:] = torch.randn_like(torch.mean(first_conv_layer.weight, dim=1, keepdim=True))
-        
+            new_conv_layer.weight[:, 3:] = torch.randn_like(
+                torch.mean(first_conv_layer.weight, dim=1, keepdim=True)
+            )
         if first_conv_layer.bias is not None:
             new_conv_layer.bias = first_conv_layer.bias
     
-    vgg16.features[0] = new_conv_layer
+    # Replace the first conv layer
+    resnet.conv1 = new_conv_layer
     
-    return vgg16
+    # Create a new sequential model with all ResNet layers plus reduction
+    modules = list(resnet.children())[:-2]  # Remove final FC and pooling
+    
+    # Add reduction layers (2048 -> 512)
+    modules.extend([
+        nn.Conv2d(2048, 512, kernel_size=1, stride=1, bias=False),
+        nn.BatchNorm2d(512),
+        nn.ReLU(inplace=True)
+    ])
+    
+    # Create the modified backbone
+    modified_resnet = nn.Sequential(*modules)
+    
+    return modified_resnet
+
 
 class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
@@ -780,8 +802,8 @@ class FasterRCNN(nn.Module):
         self.model_config = model_config
         
         #vgg16 = torchvision.models.vgg16(pretrained=False)
-        vgg16 = add_channel_to_vgg16(num_channels=4,)
-        self.backbone = vgg16.features[:-1]
+        resnet = add_channel_to_resnet(num_channels=4, pretrained=True)
+        self.backbone = resnet
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
                                          scales=model_config['scales'],
                                          aspect_ratios=model_config['aspect_ratios'],
