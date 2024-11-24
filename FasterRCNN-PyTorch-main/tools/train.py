@@ -199,7 +199,7 @@ def train(args):
     
     
 
-    train_dataloader = DataLoader(voc,
+    train_dataloader = DataLoader(train_dataset,
                                batch_size=1,
                                shuffle=True,
                                num_workers=2,
