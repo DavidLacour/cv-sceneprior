@@ -190,7 +190,7 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=dataset_config['depth_path'])
     
-    val_dataloader = DataLoader(voc,
+    val_dataloader = DataLoader(val_dataset,
                                batch_size=1,
                                shuffle=True,
                                num_workers=2,
@@ -304,6 +304,8 @@ def train(args):
             writer.add_scalar('Loss/Epoch/RPN_Localization', epoch_rpn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
+
+
             writer.add_scalar('Loss/Epoch/RPN_Classification_validation', val_epoch_rpn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/RPN_Localization_validation', val_epoch_rpn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation', val_epoch_frcnn_cls_loss, epoch)
@@ -311,36 +313,6 @@ def train(args):
             writer.add_scalar('Loss/Epoch/total_localization_validation', val_epoch_rpn_loc_loss + val_epoch_frcnn_loc_loss, epoch)
 
             
-
-         
-
-            with torch.no_grad():  # Disable gradient computation
-                for val_im, val_target, val_fname in tqdm(val_dataloader):
-                    val_im = val_im.float().to(device)
-                    val_target['bboxes'] = val_target['bboxes'].float().to(device)
-                    val_target['labels'] = val_target['labels'].long().to(device)
-                    
-                    # Forward pass
-                    val_rpn_output, val_frcnn_output = faster_rcnn_model(val_im, val_target)
-                    val_rpn_classification_losses.append(val_rpn_output['rpn_classification_loss'])
-                    val_rpn_localization_losses.append(val_rpn_output['rpn_localization_loss'])
-                    val_frcnn_classification_losses.append(val_frcnn_output['frcnn_classification_loss'])
-                    val_frcnn_localization_losses.append(val_frcnn_output['frcnn_localization_loss'])
-
-            val_loss = 0.0
-            val_loss /= len(val_dataset)
-            val_epoch_rpn_cls_loss = np.mean(val_rpn_classification_losses)
-            val_epoch_rpn_loc_loss = np.mean(val_rpn_localization_losses)
-            val_epoch_frcnn_cls_loss = np.mean(val_frcnn_classification_losses)
-            val_epoch_frcnn_loc_loss = np.mean(val_frcnn_localization_losses)
-
-            # Log validation loss to TensorBoard
-            writer.add_scalar('Loss/Epoch/RPN_Classification_validation', val_epoch_rpn_cls_loss, epoch)
-            writer.add_scalar('Loss/Epoch/RPN_Localization_validation', val_epoch_rpn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation',  val_epoch_frcnn_cls_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation',  val_epoch_frcnn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/total_localization_validation',  val_epoch_rpn_loc_loss +  val_epoch_frcnn_loc_loss, epoch )
-                
             print(f'train loss  {epoch_frcnn_loc_loss}')
             print(f'val loss  {val_epoch_frcnn_loc_loss}')
             
