@@ -749,39 +749,53 @@ class ROIHead(nn.Module):
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         return pred_boxes, pred_labels, pred_scores
 
-def add_channel_to_vgg16(num_channels=4,pretrained=True):
-    vgg16 = torchvision.models.vgg16(pretrained)
+
+def get_rgb_backbone(pretrained=True):
+    """Get VGG16 backbone for RGB channels"""
+    vgg16 = torchvision.models.vgg16(pretrained=pretrained)
+    return vgg16.features[:-1]
+
+def get_depth_backbone(pretrained=True):
+    """Get VGG16-like backbone for depth channel"""
+    vgg16 = torchvision.models.vgg16(pretrained=pretrained)
+    # Modify first layer to accept single channel
     first_conv_layer = vgg16.features[0]
     new_conv_layer = nn.Conv2d(
-        in_channels=num_channels,
+        in_channels=1,
         out_channels=first_conv_layer.out_channels,
         kernel_size=first_conv_layer.kernel_size,
         stride=first_conv_layer.stride,
         padding=first_conv_layer.padding,
         bias=first_conv_layer.bias is not None
     )
-    # Copy the weights from the original layer to the new layer
+    
+    # Initialize the weights for the depth channel using mean of RGB weights
     with torch.no_grad():
-        new_conv_layer.weight[:, :3] = first_conv_layer.weight
-        if num_channels > 3:
-            # Initialize the weights for the additional channel(s)
-            new_conv_layer.weight[:, 3:] = torch.randn_like(torch.mean(first_conv_layer.weight, dim=1, keepdim=True))
-        
+        new_conv_layer.weight = nn.Parameter(
+            torch.mean(first_conv_layer.weight, dim=1, keepdim=True)
+        )
         if first_conv_layer.bias is not None:
             new_conv_layer.bias = first_conv_layer.bias
-    
+            
     vgg16.features[0] = new_conv_layer
-    
-    return vgg16
+    return vgg16.features[:-1]
 
 class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
         
-        #vgg16 = torchvision.models.vgg16(pretrained=False)
-        vgg16 = add_channel_to_vgg16(num_channels=4,)
-        self.backbone = vgg16.features[:-1]
+        
+        self.rgb_backbone = get_rgb_backbone(pretrained=True)
+        self.depth_backbone = get_depth_backbone(pretrained=True)
+        
+        # Feature fusion layer to combine RGB and depth features
+        self.feature_fusion = nn.Sequential(
+            nn.Conv2d(512 * 2, model_config['backbone_out_channels'], kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(model_config['backbone_out_channels'])
+        )
+        
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
                                          scales=model_config['scales'],
                                          aspect_ratios=model_config['aspect_ratios'],
@@ -844,6 +858,40 @@ class FasterRCNN(nn.Module):
             bboxes = torch.stack((xmin, ymin, xmax, ymax), dim=2)
         return image, bboxes
     
+    def backbone(self, x):
+        # Split input into RGB and depth channels
+        rgb_input = x[:, :3]  # First 3 channels
+        depth_input = x[:, 3:].unsqueeze(1)  # Last channel
+        
+        # Process through respective backbones
+        rgb_features = self.rgb_backbone(rgb_input)
+        depth_features = self.depth_backbone(depth_input)
+        
+        # Concatenate features along channel dimension
+        combined_features = torch.cat([rgb_features, depth_features], dim=1)
+        
+        # Fuse features
+        fused_features = self.feature_fusion(combined_features)
+        
+        return fused_features
+    
+    def process_features(self, x):
+        # Split input into RGB and depth channels
+        rgb_input = x[:, :3]  # First 3 channels
+        depth_input = x[:, 3:] # Last channel
+        
+        # Process through respective backbones
+        rgb_features = self.rgb_backbone(rgb_input)
+        depth_features = self.depth_backbone(depth_input)
+        
+        # Concatenate features along channel dimension
+        combined_features = torch.cat([rgb_features, depth_features], dim=1)
+        
+        # Fuse features
+        fused_features = self.feature_fusion(combined_features)
+        
+        return fused_features
+    
     def forward(self, image, target=None):
         old_shape = image.shape[-2:]
         if self.training:
@@ -854,7 +902,7 @@ class FasterRCNN(nn.Module):
             image, _ = self.normalize_resize_image_and_boxes(image, None)
         
         # Call backbone
-        feat = self.backbone(image)
+        feat = self.process_features(image)
         
         # Call RPN and get proposals
         rpn_output = self.rpn(image, feat, target)

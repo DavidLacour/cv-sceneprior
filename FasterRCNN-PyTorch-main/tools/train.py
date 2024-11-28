@@ -180,7 +180,7 @@ def train(args):
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
     
-    voc = VOCDataset('train',
+    train_dataset = VOCDataset('train',
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=dataset_config['depth_path'])
@@ -196,7 +196,7 @@ def train(args):
                                num_workers=2,
                                ) 
 
-    train_dataset = DataLoader(voc,
+    train_dataloader = DataLoader(train_dataset,
                                batch_size=1,
                                shuffle=True,
                                num_workers=2,
@@ -222,7 +222,7 @@ def train(args):
         f.write(f"Device: {device}\n")
         f.write(f"Number of epochs: {train_config['num_epochs']}\n")
         f.write(f"Learning rate: {train_config['lr']}\n")
-        f.write(f"Dataset size: {len(voc)}\n")
+        f.write(f"Dataset size: {len(train_dataset)}\n")
     
 
     acc_steps = train_config['acc_steps']
@@ -249,7 +249,7 @@ def train(args):
             val_frcnn_localization_losses = []
             
             # Training loop
-            for im, target, fname in tqdm(train_dataset):
+            for im, target, fname in tqdm(train_dataloader):
                 im = im.float().to(device)
                 target['bboxes'] = target['bboxes'].float().to(device)
                 target['labels'] = target['labels'].long().to(device)
