@@ -236,7 +236,6 @@ def train(args):
                     train_config['ckpt_name'] + "best"
                 )
     try:
-
         for epoch in range(num_epochs):
             epoch_start_time = time.time()
             rpn_classification_losses = []
@@ -249,6 +248,7 @@ def train(args):
             val_frcnn_classification_losses = []
             val_frcnn_localization_losses = []
             
+            # Training loop
             for im, target, fname in tqdm(train_dataset):
                 im = im.float().to(device)
                 target['bboxes'] = target['bboxes'].float().to(device)
@@ -259,10 +259,12 @@ def train(args):
                 frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
                 loss = rpn_loss + frcnn_loss
 
-                rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
-                rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
-                frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
-                frcnn_localization_losses.append(frcnn_output['frcnn_localization_loss'].item())
+                # Move losses to CPU before converting to numpy
+                rpn_classification_losses.append(rpn_output['rpn_classification_loss'].detach().cpu().item())
+                rpn_localization_losses.append(rpn_output['rpn_localization_loss'].detach().cpu().item())
+                frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].detach().cpu().item())
+                frcnn_localization_losses.append(frcnn_output['frcnn_localization_loss'].detach().cpu().item())
+                
                 loss = loss / acc_steps
                 loss.backward()
                 if step_count % acc_steps == 0:
@@ -270,20 +272,43 @@ def train(args):
                     optimizer.zero_grad()
                 step_count += 1
                 global_step += 1
-            epoch_time = time.time() - epoch_start_time
-            print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
-                
-            # Calculate and log epoch metrics
+
+            # Validation loop
+            with torch.no_grad():
+                for val_im, val_target, val_fname in tqdm(val_dataloader):
+                    val_im = val_im.float().to(device)
+                    val_target['bboxes'] = val_target['bboxes'].float().to(device)
+                    val_target['labels'] = val_target['labels'].long().to(device)
+                    
+                    val_rpn_output, val_frcnn_output = faster_rcnn_model(val_im, val_target)
+                    
+                    # Move validation losses to CPU before appending
+                    val_rpn_classification_losses.append(val_rpn_output['rpn_classification_loss'].cpu().item())
+                    val_rpn_localization_losses.append(val_rpn_output['rpn_localization_loss'].cpu().item())
+                    val_frcnn_classification_losses.append(val_frcnn_output['frcnn_classification_loss'].cpu().item())
+                    val_frcnn_localization_losses.append(val_frcnn_output['frcnn_localization_loss'].cpu().item())
+
+            # Calculate metrics (now safe to use numpy as all values are on CPU)
             epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
             epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
             epoch_frcnn_cls_loss = np.mean(frcnn_classification_losses)
             epoch_frcnn_loc_loss = np.mean(frcnn_localization_losses)
             
+            val_epoch_rpn_cls_loss = np.mean(val_rpn_classification_losses)
+            val_epoch_rpn_loc_loss = np.mean(val_rpn_localization_losses)
+            val_epoch_frcnn_cls_loss = np.mean(val_frcnn_classification_losses)
+            val_epoch_frcnn_loc_loss = np.mean(val_frcnn_localization_losses)
+
+            # Log metrics to TensorBoard
             writer.add_scalar('Loss/Epoch/RPN_Classification', epoch_rpn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/RPN_Localization', epoch_rpn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Classification', epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization', epoch_frcnn_loc_loss, epoch)
-            writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
+            writer.add_scalar('Loss/Epoch/RPN_Classification_validation', val_epoch_rpn_cls_loss, epoch)
+            writer.add_scalar('Loss/Epoch/RPN_Localization_validation', val_epoch_rpn_loc_loss, epoch)
+            writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation', val_epoch_frcnn_cls_loss, epoch)
+            writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation', val_epoch_frcnn_loc_loss, epoch)
+            writer.add_scalar('Loss/Epoch/total_localization_validation', val_epoch_rpn_loc_loss + val_epoch_frcnn_loc_loss, epoch)
 
             
 
