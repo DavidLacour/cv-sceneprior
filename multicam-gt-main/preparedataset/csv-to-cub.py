@@ -144,7 +144,7 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                     (xmin, ymin), (xmax, ymax) = get_bounding_box(clamped_cuboid)
                     box_width = xmax - xmin
                     box_height = ymax - ymin
-                    if box_width >= 16 and box_height >= 16:
+                    if box_width >= 1 and box_height >= 1:
                         cuboids_2d[cam_idx].append((row['person_id'], clamped_cuboid))
                     else:
                         print(f"Skipping small bounding box for person {row['person_id']} in frame {frame_id} (size: {box_width:.1f}x{box_height:.1f})")
@@ -244,7 +244,7 @@ def draw_annotations(image_path, xml_path):
         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
         
       
-        cv2.putText(img, f"ID: ", (xmin + 5, ymin + 25), 
+        cv2.putText(img, f"Person: ", (xmin + 5, ymin + 25), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
     cv2.imshow('Image', img)
