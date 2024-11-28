@@ -29,7 +29,7 @@ model_params:
   roi_low_bg_iou : 0.0 # increase it to 0.1 for hard negative
   roi_pool_size : 7
   roi_nms_threshold : 0.3
-  roi_topk_detections : 100
+  roi_topk_detections : 10
   roi_score_threshold : 0.05
   roi_batch_size : 128
   roi_pos_fraction : 0.25

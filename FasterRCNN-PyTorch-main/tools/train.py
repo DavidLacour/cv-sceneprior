@@ -233,7 +233,7 @@ def train(args):
     best_model_path = None
     best_weights_path = os.path.join(
                     train_config['task_name'],
-                    train_config['ckpt_name'] + "best"
+                     "best" + train_config['ckpt_name'] 
                 )
     try:
         for epoch in range(num_epochs):
@@ -340,7 +340,7 @@ def train(args):
             writer.add_scalar('map', map_score, epoch)
             early_stopping(map_score, epoch)
             
-            if early_stopping.require_save:
+            if early_stopping.require_save or epoch == 0 :
                  torch.save(faster_rcnn_model.state_dict(), best_weights_path)
             faster_rcnn_model.train()
             
@@ -364,7 +364,7 @@ def train(args):
             
             # Update training info file
             with open(train_info_path, 'a') as f:
-                f.write(f"\nEpoch {epoch} completed in {epoch_time:.2f}s\n")
+                f.write(f"\nEpoch {epoch} completed \n")
                 f.write(f"Average losses:\n")
                 f.write(f"  RPN Classification: {epoch_rpn_cls_loss:.4f}\n")
                 f.write(f"  RPN Localization: {epoch_rpn_loc_loss:.4f}\n")
