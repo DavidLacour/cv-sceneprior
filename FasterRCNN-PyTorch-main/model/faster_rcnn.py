@@ -520,7 +520,7 @@ class RegionProposalNetwork(nn.Module):
             return rpn_output
 
 
-class ROIHead(nn.Module):
+class ModifiedROIHead(nn.Module):
     r"""
     ROI head on top of ROI pooling layer for generating
     classification and box transformation predictions
@@ -529,7 +529,7 @@ class ROIHead(nn.Module):
     """
     
     def __init__(self, model_config, num_classes, in_channels):
-        super(ROIHead, self).__init__()
+        super(ModifiedROIHead, self).__init__()
         self.num_classes = num_classes
         self.roi_batch_size = model_config['roi_batch_size']
         self.roi_pos_count = int(model_config['roi_pos_fraction'] * self.roi_batch_size)
@@ -541,97 +541,46 @@ class ROIHead(nn.Module):
         self.pool_size = model_config['roi_pool_size']
         self.fc_inner_dim = model_config['fc_inner_dim']
         
-        self.fc6 = nn.Linear(in_channels * self.pool_size * self.pool_size, self.fc_inner_dim)
+        # ROI pooling for depth channel
+        self.depth_pool = nn.AdaptiveAvgPool2d((self.pool_size, self.pool_size))
+        
+        # Separate fully connected layer for depth features
+        self.depth_fc = nn.Linear(self.pool_size * self.pool_size, 256)
+        
+        # Modified fc6 to accept concatenated RGB and depth features
+        self.fc6 = nn.Linear(in_channels * self.pool_size * self.pool_size + 256, self.fc_inner_dim)
         self.fc7 = nn.Linear(self.fc_inner_dim, self.fc_inner_dim)
         self.cls_layer = nn.Linear(self.fc_inner_dim, self.num_classes)
         self.bbox_reg_layer = nn.Linear(self.fc_inner_dim, self.num_classes * 4)
         
-        torch.nn.init.normal_(self.cls_layer.weight, std=0.01)
-        torch.nn.init.constant_(self.cls_layer.bias, 0)
-
-        torch.nn.init.normal_(self.bbox_reg_layer.weight, std=0.001)
-        torch.nn.init.constant_(self.bbox_reg_layer.bias, 0)
+        # Initialize weights
+        for layer in [self.cls_layer, self.bbox_reg_layer]:
+            torch.nn.init.normal_(layer.weight, std=0.01)
+            torch.nn.init.constant_(layer.bias, 0)
     
-    def assign_target_to_proposals(self, proposals, gt_boxes, gt_labels):
-        r"""
-        Given a set of proposals and ground truth boxes and their respective labels.
-        Use IOU to assign these proposals to some gt box or background
-        :param proposals: (number_of_proposals, 4)
-        :param gt_boxes: (number_of_gt_boxes, 4)
-        :param gt_labels: (number_of_gt_boxes)
-        :return:
-            labels: (number_of_proposals)
-            matched_gt_boxes: (number_of_proposals, 4)
-        """
-        # Get IOU Matrix between gt boxes and proposals
-        iou_matrix = get_iou(gt_boxes, proposals)
-        # For each gt box proposal find best matching gt box
-        best_match_iou, best_match_gt_idx = iou_matrix.max(dim=0)
-        background_proposals = (best_match_iou < self.iou_threshold) & (best_match_iou >= self.low_bg_iou)
-        ignored_proposals = best_match_iou < self.low_bg_iou
-        
-        # Update best match of low IOU proposals to -1
-        best_match_gt_idx[background_proposals] = -1
-        best_match_gt_idx[ignored_proposals] = -2
-        
-        # Get best marching gt boxes for ALL proposals
-        # Even background proposals would have a gt box assigned to it
-        # Label will be used to ignore them later
-        matched_gt_boxes_for_proposals = gt_boxes[best_match_gt_idx.clamp(min=0)]
-        
-        # Get class label for all proposals according to matching gt boxes
-        labels = gt_labels[best_match_gt_idx.clamp(min=0)]
-        labels = labels.to(dtype=torch.int64)
-        
-        # Update background proposals to be of label 0(background)
-        labels[background_proposals] = 0
-        
-        # Set all to be ignored anchor labels as -1(will be ignored)
-        labels[ignored_proposals] = -1
-        
-        return labels, matched_gt_boxes_for_proposals
-    
-    def forward(self, feat, proposals, image_shape, target):
-        r"""
-        Main method for ROI head that does the following:
-        1. If training assign target boxes and labels to all proposals
-        2. If training sample positive and negative proposals
-        3. If training get bbox transformation targets for all proposals based on assignments
-        4. Get ROI Pooled features for all proposals
-        5. Call fc6, fc7 and classification and bbox transformation fc layers
-        6. Compute classification and localization loss
-
-        :param feat:
-        :param proposals:
-        :param image_shape:
-        :param target:
-        :return:
-        """
+    def forward(self, feat, depth_input, proposals, image_shape, target):
         if self.training and target is not None:
-            # Add ground truth to proposals
             proposals = torch.cat([proposals, target['bboxes'][0]], dim=0)
-            
             gt_boxes = target['bboxes'][0]
             gt_labels = target['labels'][0]
             
-            labels, matched_gt_boxes_for_proposals = self.assign_target_to_proposals(proposals, gt_boxes, gt_labels)
+            labels, matched_gt_boxes_for_proposals = self.assign_target_to_proposals(
+                proposals, gt_boxes, gt_labels)
             
-            sampled_neg_idx_mask, sampled_pos_idx_mask = sample_positive_negative(labels,
-                                                                                  positive_count=self.roi_pos_count,
-                                                                                  total_count=self.roi_batch_size)
+            sampled_neg_idx_mask, sampled_pos_idx_mask = sample_positive_negative(
+                labels,
+                positive_count=self.roi_pos_count,
+                total_count=self.roi_batch_size)
             
             sampled_idxs = torch.where(sampled_pos_idx_mask | sampled_neg_idx_mask)[0]
             
-            # Keep only sampled proposals
             proposals = proposals[sampled_idxs]
             labels = labels[sampled_idxs]
             matched_gt_boxes_for_proposals = matched_gt_boxes_for_proposals[sampled_idxs]
-            regression_targets = boxes_to_transformation_targets(matched_gt_boxes_for_proposals, proposals)
-            # regression_targets -> (sampled_training_proposals, 4)
-            # matched_gt_boxes_for_proposals -> (sampled_training_proposals, 4)
+            regression_targets = boxes_to_transformation_targets(
+                matched_gt_boxes_for_proposals, proposals)
         
-        # Get desired scale to pass to roi pooling function
-        # For vgg16 case this would be 1/16 (0.0625)
+        # Get scale for ROI pooling
         size = feat.shape[-2:]
         possible_scales = []
         for s1, s2 in zip(size, image_shape):
@@ -640,31 +589,48 @@ class ROIHead(nn.Module):
             possible_scales.append(scale)
         assert possible_scales[0] == possible_scales[1]
         
-        # ROI pooling and call all layers for prediction
-        proposal_roi_pool_feats = torchvision.ops.roi_pool(feat, [proposals],
-                                                           output_size=self.pool_size,
-                                                           spatial_scale=possible_scales[0])
+        # ROI pooling for RGB features
+        proposal_roi_pool_feats = torchvision.ops.roi_pool(
+            feat, [proposals],
+            output_size=self.pool_size,
+            spatial_scale=possible_scales[0])
         proposal_roi_pool_feats = proposal_roi_pool_feats.flatten(start_dim=1)
-        box_fc_6 = torch.nn.functional.relu(self.fc6(proposal_roi_pool_feats))
+        
+        # Process depth features for each proposal
+        depth_rois = []
+        for box in proposals:
+            x1, y1, x2, y2 = box
+            roi = depth_input[..., int(y1):int(y2), int(x1):int(x2)]
+            if roi.numel() > 0:  # Check if ROI is not empty
+                pooled_depth = self.depth_pool(roi)
+                depth_rois.append(pooled_depth)
+            else:
+                # Handle empty ROIs with zeros
+                pooled_depth = torch.zeros(
+                    (depth_input.size(1), self.pool_size, self.pool_size),
+                    device=depth_input.device)
+                depth_rois.append(pooled_depth)
+        
+        depth_rois = torch.stack(depth_rois).flatten(start_dim=1)
+        depth_features = self.depth_fc(depth_rois)
+        
+        # Concatenate RGB and depth features
+        combined_features = torch.cat([proposal_roi_pool_feats, depth_features], dim=1)
+        
+        # Forward through FC layers
+        box_fc_6 = torch.nn.functional.relu(self.fc6(combined_features))
         box_fc_7 = torch.nn.functional.relu(self.fc7(box_fc_6))
         cls_scores = self.cls_layer(box_fc_7)
         box_transform_pred = self.bbox_reg_layer(box_fc_7)
-        # cls_scores -> (proposals, num_classes)
-        # box_transform_pred -> (proposals, num_classes * 4)
-        ##############################################
-
-        #print("Shape of cls_scores: roi head", cls_scores.shape)
-        #print("Shape of box_transform_pred roi head :", box_transform_pred.shape)
-            
+        
         num_boxes, num_classes = cls_scores.shape
         box_transform_pred = box_transform_pred.reshape(num_boxes, num_classes, 4)
+        
         frcnn_output = {}
         if self.training and target is not None:
             classification_loss = torch.nn.functional.cross_entropy(cls_scores, labels)
             
-            # Compute localization loss only for non-background labelled proposals
             fg_proposals_idxs = torch.where(labels > 0)[0]
-            # Get class labels for these positive proposals
             fg_cls_labels = labels[fg_proposals_idxs]
             
             localization_loss = torch.nn.functional.smooth_l1_loss(
@@ -674,80 +640,81 @@ class ROIHead(nn.Module):
                 reduction="sum",
             )
             localization_loss = localization_loss / labels.numel()
+            
             frcnn_output['frcnn_classification_loss'] = classification_loss
             frcnn_output['frcnn_localization_loss'] = localization_loss
-        
-        if self.training:
+            
             return frcnn_output
         else:
             device = cls_scores.device
-            # Apply transformation predictions to proposals
-            pred_boxes = apply_regression_pred_to_anchors_or_proposals(box_transform_pred, proposals)
+            pred_boxes = apply_regression_pred_to_anchors_or_proposals(
+                box_transform_pred, proposals)
             pred_scores = torch.nn.functional.softmax(cls_scores, dim=-1)
             
-            # Clamp box to image boundary
             pred_boxes = clamp_boxes_to_image_boundary(pred_boxes, image_shape)
             
-            # create labels for each prediction
             pred_labels = torch.arange(num_classes, device=device)
             pred_labels = pred_labels.view(1, -1).expand_as(pred_scores)
             
-            # remove predictions with the background label
             pred_boxes = pred_boxes[:, 1:]
             pred_scores = pred_scores[:, 1:]
             pred_labels = pred_labels[:, 1:]
             
-            # pred_boxes -> (number_proposals, num_classes-1, 4)
-            # pred_scores -> (number_proposals, num_classes-1)
-            # pred_labels -> (number_proposals, num_classes-1)
-            
-            # batch everything, by making every class prediction be a separate instance
             pred_boxes = pred_boxes.reshape(-1, 4)
             pred_scores = pred_scores.reshape(-1)
             pred_labels = pred_labels.reshape(-1)
             
-            pred_boxes, pred_labels, pred_scores = self.filter_predictions(pred_boxes, pred_labels, pred_scores)
+            pred_boxes, pred_labels, pred_scores = self.filter_predictions(
+                pred_boxes, pred_labels, pred_scores)
+                
             frcnn_output['boxes'] = pred_boxes
             frcnn_output['scores'] = pred_scores
             frcnn_output['labels'] = pred_labels
+            
             return frcnn_output
+            
+    def assign_target_to_proposals(self, proposals, gt_boxes, gt_labels):
+        iou_matrix = get_iou(gt_boxes, proposals)
+        best_match_iou, best_match_gt_idx = iou_matrix.max(dim=0)
+        background_proposals = (best_match_iou < self.iou_threshold) & (best_match_iou >= self.low_bg_iou)
+        ignored_proposals = best_match_iou < self.low_bg_iou
+        
+        best_match_gt_idx[background_proposals] = -1
+        best_match_gt_idx[ignored_proposals] = -2
+        
+        matched_gt_boxes_for_proposals = gt_boxes[best_match_gt_idx.clamp(min=0)]
+        labels = gt_labels[best_match_gt_idx.clamp(min=0)]
+        labels = labels.to(dtype=torch.int64)
+        
+        labels[background_proposals] = 0
+        labels[ignored_proposals] = -1
+        
+        return labels, matched_gt_boxes_for_proposals
     
     def filter_predictions(self, pred_boxes, pred_labels, pred_scores):
-        r"""
-        Method to filter predictions by applying the following in order:
-        1. Filter low scoring boxes
-        2. Remove small size boxes∂
-        3. NMS for each class separately
-        4. Keep only topK detections
-        :param pred_boxes:
-        :param pred_labels:
-        :param pred_scores:
-        :return:
-        """
-        # remove low scoring boxes
         keep = torch.where(pred_scores > self.low_score_threshold)[0]
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         
-        # Remove small boxes
         min_size = 16
         ws, hs = pred_boxes[:, 2] - pred_boxes[:, 0], pred_boxes[:, 3] - pred_boxes[:, 1]
         keep = (ws >= min_size) & (hs >= min_size)
         keep = torch.where(keep)[0]
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
         
-        # Class wise nms
         keep_mask = torch.zeros_like(pred_scores, dtype=torch.bool)
         for class_id in torch.unique(pred_labels):
             curr_indices = torch.where(pred_labels == class_id)[0]
-            curr_keep_indices = torch.ops.torchvision.nms(pred_boxes[curr_indices],
-                                                          pred_scores[curr_indices],
-                                                          self.nms_threshold)
+            curr_keep_indices = torch.ops.torchvision.nms(
+                pred_boxes[curr_indices],
+                pred_scores[curr_indices],
+                self.nms_threshold)
             keep_mask[curr_indices[curr_keep_indices]] = True
+            
         keep_indices = torch.where(keep_mask)[0]
         post_nms_keep_indices = keep_indices[pred_scores[keep_indices].sort(descending=True)[1]]
         keep = post_nms_keep_indices[:self.topK_detections]
-        pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
-        return pred_boxes, pred_labels, pred_scores
+        
+        return pred_boxes[keep], pred_labels[keep], pred_scores[keep]
 
 
 def get_rgb_backbone(pretrained=True):
@@ -785,46 +752,25 @@ class FasterRCNN(nn.Module):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
         
+        # Use standard VGG16 backbone for RGB only
+        self.backbone = torchvision.models.vgg16(pretrained=True).features[:-1]
         
-        self.rgb_backbone = get_rgb_backbone(pretrained=True)
-        self.depth_backbone = get_depth_backbone(pretrained=True)
+        # Remove the depth backbone and feature fusion since we'll add depth later
+        self.rpn = RegionProposalNetwork(512,  # Standard VGG16 output channels
+                                       scales=model_config['scales'],
+                                       aspect_ratios=model_config['aspect_ratios'],
+                                       model_config=model_config)
+                                       
+        # Modified ROIHead to handle depth information
+        self.roi_head = ModifiedROIHead(model_config, num_classes, in_channels=512)
         
-        # Feature fusion layer to combine RGB and depth features
-        self.feature_fusion = nn.Sequential(
-            nn.Conv2d(512 * 2, model_config['backbone_out_channels'], kernel_size=1),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm2d(model_config['backbone_out_channels'])
-        )
-        
-        self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
-                                         scales=model_config['scales'],
-                                         aspect_ratios=model_config['aspect_ratios'],
-                                         model_config=model_config)
-        self.roi_head = ROIHead(model_config, num_classes, in_channels=model_config['backbone_out_channels'])
-        """
-        for layer in self.backbone[:10]:
-            for p in layer.parameters():
-                p.requires_grad = False2
-        """
         self.image_mean = [0.485, 0.456, 0.406, 25.0]
-        self.image_std = [0.229, 0.224, 0.225,10.0]
+        self.image_std = [0.229, 0.224, 0.225, 10.0]
         self.min_size = model_config['min_im_size']
         self.max_size = model_config['max_im_size']
     
     def normalize_resize_image_and_boxes(self, image, bboxes):
         dtype, device = image.dtype, image.device
-        
-        # Normalize
-        #mean = torch.as_tensor(self.image_mean[:3], dtype=dtype, device=device)
-        #std = torch.as_tensor(self.image_std[:3], dtype=dtype, device=device)
-    
-        # Apply normalization to the first 3 channels only
-        #image[0:3] = (image[0:3] - mean[:, None, None]) / std[:, None, None]
-        #############
-        
-        # Resize to 1000x600 such that lowest size dimension is scaled upto 600
-        # but larger dimension is not more than 1000
-        # So compute scale factor for both and scale is minimum of these two
         h, w = image.shape[-2:]
         im_shape = torch.tensor(image.shape[-2:])
         min_size = torch.min(im_shape).to(dtype=torch.float32)
@@ -843,7 +789,6 @@ class FasterRCNN(nn.Module):
         )
 
         if bboxes is not None:
-            # Resize boxes by
             ratios = [
                 torch.tensor(s, dtype=torch.float32, device=bboxes.device)
                 / torch.tensor(s_orig, dtype=torch.float32, device=bboxes.device)
@@ -858,77 +803,33 @@ class FasterRCNN(nn.Module):
             bboxes = torch.stack((xmin, ymin, xmax, ymax), dim=2)
         return image, bboxes
     
-    def backbone(self, x):
-        # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  # First 3 channels
-        depth_input = x[:, 3:].unsqueeze(1)  # Last channel
-        
-        # Process through respective backbones
-        rgb_features = self.rgb_backbone(rgb_input)
-        depth_features = self.depth_backbone(depth_input)
-        
-        # Concatenate features along channel dimension
-        combined_features = torch.cat([rgb_features, depth_features], dim=1)
-        
-        # Fuse features
-        fused_features = self.feature_fusion(combined_features)
-        
-        return fused_features
-    
-    def process_features(self, x):
-        # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  # First 3 channels
-        depth_input = x[:, 3:] # Last channel
-        
-        # Process through respective backbones
-        rgb_features = self.rgb_backbone(rgb_input)
-        depth_features = self.depth_backbone(depth_input)
-        
-        # Concatenate features along channel dimension
-        combined_features = torch.cat([rgb_features, depth_features], dim=1)
-        
-        # Fuse features
-        fused_features = self.feature_fusion(combined_features)
-        
-        return fused_features
-    
     def forward(self, image, target=None):
         old_shape = image.shape[-2:]
         if self.training:
-            # Normalize and resize boxes
             image, bboxes = self.normalize_resize_image_and_boxes(image, target['bboxes'])
             target['bboxes'] = bboxes
         else:
             image, _ = self.normalize_resize_image_and_boxes(image, None)
         
-        # Call backbone
-        feat = self.process_features(image)
+        # Split RGB and depth
+        rgb_input = image[:, :3]
+        depth_input = image[:, 3:]
+        
+        # Process RGB through backbone
+        feat = self.backbone(rgb_input)
         
         # Call RPN and get proposals
         rpn_output = self.rpn(image, feat, target)
         proposals = rpn_output['proposals']
         
-        #print("Shape of proposals forward fasterrcnn:", proposals.shape)
-        #print("Number of proposals forward fasterrcnn:", proposals.size(0))
-        # Call ROI head and convert proposals to boxes
-        try: 
-            frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
-        except:
-           
-           print("proposal",proposals)   
-           print("proposal shape",proposals.shape)
-           print( "feat",feat.shape)
-           print("image",image.shape)
-           print("image.fname",image)
-           print(target)
-        frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
+        # Call modified ROI head with both RGB features and depth map
+        frcnn_output = self.roi_head(feat, depth_input, proposals, image.shape[-2:], target)
+        
         if not self.training:
-            # Transform boxes to original image dimensions called only during inference
             frcnn_output['boxes'] = transform_boxes_to_original_size(frcnn_output['boxes'],
-                                                                     image.shape[-2:],
-                                                                     old_shape)
+                                                                   image.shape[-2:],
+                                                                   old_shape)
         return rpn_output, frcnn_output
-
 
 
 
