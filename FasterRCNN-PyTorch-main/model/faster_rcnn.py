@@ -860,34 +860,28 @@ class FasterRCNN(nn.Module):
     
     def backbone(self, x):
         # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  # First 3 channels
-        depth_input = x[:, 3:].unsqueeze(1)  # Last channel
-        
-        # Process through respective backbones
+        rgb_input = x[:, :3]  
+        depth_input = x[:, 3:].unsqueeze(1) 
+
         rgb_features = self.rgb_backbone(rgb_input)
         depth_features = self.depth_backbone(depth_input)
-        
-        # Concatenate features along channel dimension
         combined_features = torch.cat([rgb_features, depth_features], dim=1)
         
-        # Fuse features
         fused_features = self.feature_fusion(combined_features)
         
         return fused_features
     
     def process_features(self, x):
-        # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  # First 3 channels
-        depth_input = x[:, 3:] # Last channel
+        rgb_input = x[:, :3]  
+        depth_input = x[:, 3:]
         
-        # Process through respective backbones
+
         rgb_features = self.rgb_backbone(rgb_input)
         depth_features = self.depth_backbone(depth_input)
         
-        # Concatenate features along channel dimension
+     
         combined_features = torch.cat([rgb_features, depth_features], dim=1)
-        
-        # Fuse features
+    
         fused_features = self.feature_fusion(combined_features)
         
         return fused_features
@@ -908,8 +902,6 @@ class FasterRCNN(nn.Module):
         rpn_output = self.rpn(image, feat, target)
         proposals = rpn_output['proposals']
         
-        #print("Shape of proposals forward fasterrcnn:", proposals.shape)
-        #print("Number of proposals forward fasterrcnn:", proposals.size(0))
         # Call ROI head and convert proposals to boxes
         try: 
             frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
