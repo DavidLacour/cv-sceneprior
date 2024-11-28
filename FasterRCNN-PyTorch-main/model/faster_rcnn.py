@@ -600,10 +600,13 @@ class ModifiedROIHead(nn.Module):
         depth_rois = []
         for box in proposals:
             x1, y1, x2, y2 = box
+            # # This creates a slice of the depth map corresponding to the proposal box.
+            # keeps all previous dimensions (batch, channels) and takes a spatial slice from y1 to y2 and x1 to x2.
             roi = depth_input[..., int(y1):int(y2), int(x1):int(x2)]
             if roi.numel() > 0:  # Check if ROI is not empty
-                pooled_depth = self.depth_pool(roi)
+                pooled_depth = self.depth_pool(roi)   # Resize to fixed size using adaptive pooling
                 depth_rois.append(pooled_depth)
+            # If ROI is empty (e.g., box coordinates resulted in 0x0 region)
             else:
                 # Handle empty ROIs with zeros
                 pooled_depth = torch.zeros(
@@ -755,8 +758,8 @@ class FasterRCNN(nn.Module):
         # Use standard VGG16 backbone for RGB only
         self.backbone = torchvision.models.vgg16(pretrained=True).features[:-1]
         
-        # Remove the depth backbone and feature fusion since we'll add depth later
-        self.rpn = RegionProposalNetwork(512,  # Standard VGG16 output channels
+        
+        self.rpn = RegionProposalNetwork(512, 
                                        scales=model_config['scales'],
                                        aspect_ratios=model_config['aspect_ratios'],
                                        model_config=model_config)
