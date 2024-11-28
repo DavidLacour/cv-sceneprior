@@ -159,13 +159,13 @@ def load_csv_and_generate_xml(csv_file, params_dir, output_folder,creation_metho
                 
             root = ET.Element("annotation")
             
-            ET.SubElement(root, "folder").text = "VOC2007"
+            ET.SubElement(root, "folder").text = "IvanInvisionData"
             camera_id = cam_params[cam_idx].id
             ET.SubElement(root, "filename").text = f"cam_{camera_id[0]}_{camera_id[1]}_undistorted_{frame_id:08d}.jpg"
             
             source = ET.SubElement(root, "source")
-            ET.SubElement(source, "database").text = "The VOC2007 Database"
-            ET.SubElement(source, "annotation").text = "PASCAL VOC2007"
+            ET.SubElement(source, "database").text = "IvanInvisionData"
+            ET.SubElement(source, "annotation").text = "IvanInvisionData"
             ET.SubElement(source, "image").text = "flickr"
             
             size = ET.SubElement(root, "size")
