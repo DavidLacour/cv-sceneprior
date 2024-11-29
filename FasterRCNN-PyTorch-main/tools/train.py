@@ -235,10 +235,10 @@ def train(args):
             writer.add_scalar('Loss/Epoch/total_localization_train', epoch_rpn_loc_loss + epoch_frcnn_loc_loss, epoch )
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
 
-            val_epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
-            val_epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
-            val_epoch_frcnn_cls_loss = np.mean(frcnn_classification_losses)
-            val_epoch_frcnn_loc_loss = np.mean(frcnn_localization_losses)
+            val_epoch_rpn_cls_loss = np.mean(val_rpn_classification_losses)
+            val_epoch_rpn_loc_loss = np.mean(val_rpn_localization_losses)
+            val_epoch_frcnn_cls_loss = np.mean(val_frcnn_classification_losses)
+            val_epoch_frcnn_loc_loss = np.mean(val_frcnn_localization_losses)
 
             # Log validation loss to TensorBoard
             writer.add_scalar('Loss/Epoch/RPN_Classification_validation', val_epoch_rpn_cls_loss, epoch)
