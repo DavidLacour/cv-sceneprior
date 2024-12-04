@@ -521,13 +521,6 @@ class RegionProposalNetwork(nn.Module):
 
 
 class ModifiedROIHead(nn.Module):
-    r"""
-    ROI head on top of ROI pooling layer for generating
-    classification and box transformation predictions
-    We have two fc layers followed by a classification fc layer
-    and a bbox regression fc layer
-    """
-    
     def __init__(self, model_config, num_classes, in_channels):
         super(ModifiedROIHead, self).__init__()
         self.num_classes = num_classes
@@ -541,19 +534,13 @@ class ModifiedROIHead(nn.Module):
         self.pool_size = model_config['roi_pool_size']
         self.fc_inner_dim = model_config['fc_inner_dim']
         
-        # ROI pooling for depth channel
         self.depth_pool = nn.AdaptiveAvgPool2d((self.pool_size, self.pool_size))
-        
-        # Separate fully connected layer for depth features
         self.depth_fc = nn.Linear(self.pool_size * self.pool_size, 256)
-        
-        # Modified fc6 to accept concatenated RGB and depth features
         self.fc6 = nn.Linear(in_channels * self.pool_size * self.pool_size + 256, self.fc_inner_dim)
         self.fc7 = nn.Linear(self.fc_inner_dim, self.fc_inner_dim)
         self.cls_layer = nn.Linear(self.fc_inner_dim, self.num_classes)
         self.bbox_reg_layer = nn.Linear(self.fc_inner_dim, self.num_classes * 4)
         
-        # Initialize weights
         for layer in [self.cls_layer, self.bbox_reg_layer]:
             torch.nn.init.normal_(layer.weight, std=0.01)
             torch.nn.init.constant_(layer.bias, 0)
@@ -580,7 +567,6 @@ class ModifiedROIHead(nn.Module):
             regression_targets = boxes_to_transformation_targets(
                 matched_gt_boxes_for_proposals, proposals)
         
-        # Get scale for ROI pooling
         size = feat.shape[-2:]
         possible_scales = []
         for s1, s2 in zip(size, image_shape):
@@ -589,38 +575,38 @@ class ModifiedROIHead(nn.Module):
             possible_scales.append(scale)
         assert possible_scales[0] == possible_scales[1]
         
-        # ROI pooling for RGB features
         proposal_roi_pool_feats = torchvision.ops.roi_pool(
             feat, [proposals],
             output_size=self.pool_size,
             spatial_scale=possible_scales[0])
         proposal_roi_pool_feats = proposal_roi_pool_feats.flatten(start_dim=1)
         
-        # Process depth features for each proposal
+        # Process depth features
         depth_rois = []
         for box in proposals:
             x1, y1, x2, y2 = box
-            # # This creates a slice of the depth map corresponding to the proposal box.
-            # keeps all previous dimensions (batch, channels) and takes a spatial slice from y1 to y2 and x1 to x2.
-            roi = depth_input[..., int(y1):int(y2), int(x1):int(x2)]
-            if roi.numel() > 0:  # Check if ROI is not empty
-                pooled_depth = self.depth_pool(roi)   # Resize to fixed size using adaptive pooling
-                depth_rois.append(pooled_depth)
-            # If ROI is empty (e.g., box coordinates resulted in 0x0 region)
-            else:
-                # Handle empty ROIs with zeros
-                pooled_depth = torch.zeros(
-                    (depth_input.size(1), self.pool_size, self.pool_size),
-                    device=depth_input.device)
-                depth_rois.append(pooled_depth)
+            x1, y1, x2, y2 = map(lambda x: max(0, int(x)), [x1, y1, x2, y2])
+            
+            # Ensure minimum size of 1x1
+            if x2 <= x1:
+                x2 = x1 + 1
+            if y2 <= y1:
+                y2 = y1 + 1
+            
+            roi = depth_input[..., y1:y2, x1:x2]
+            pooled_depth = self.depth_pool(roi)
+            
+            # Ensure consistent dimensions by squeezing if necessary
+            if pooled_depth.dim() == 4:
+                pooled_depth = pooled_depth.squeeze(0)
+                
+            depth_rois.append(pooled_depth)
         
-        depth_rois = torch.stack(depth_rois).flatten(start_dim=1)
-        depth_features = self.depth_fc(depth_rois)
+        depth_rois = torch.stack(depth_rois)
+        depth_features = self.depth_fc(depth_rois.flatten(start_dim=1))
         
-        # Concatenate RGB and depth features
         combined_features = torch.cat([proposal_roi_pool_feats, depth_features], dim=1)
         
-        # Forward through FC layers
         box_fc_6 = torch.nn.functional.relu(self.fc6(combined_features))
         box_fc_7 = torch.nn.functional.relu(self.fc7(box_fc_6))
         cls_scores = self.cls_layer(box_fc_7)
@@ -718,7 +704,6 @@ class ModifiedROIHead(nn.Module):
         keep = post_nms_keep_indices[:self.topK_detections]
         
         return pred_boxes[keep], pred_labels[keep], pred_scores[keep]
-
 
 def get_rgb_backbone(pretrained=True):
     """Get VGG16 backbone for RGB channels"""
