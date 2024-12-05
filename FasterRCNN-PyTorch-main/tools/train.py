@@ -19,6 +19,53 @@ from tools.infer import evaluate_map
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
+def load_existing_weights(model, weights_path, device, logger=None):
+    """
+    Check for and load existing model weights if they exist.
+    
+    Args:
+        model: The model to load weights into
+        weights_path: Path to the weights file
+        device: torch device (cuda/cpu)
+        logger: Optional logging function or file
+    
+    Returns:
+        bool: True if weights were loaded successfully, False otherwise
+    """
+    try:
+        if os.path.exists(weights_path):
+            print(f"Found existing weights at {weights_path}")
+            if logger:
+                logger.write(f"Found existing weights at {weights_path}\n")
+            
+            # Load the state dict
+            state_dict = torch.load(weights_path, map_location=device)
+            
+            # Check if state_dict is wrapped in a checkpoint
+            if isinstance(state_dict, dict) and 'model_state_dict' in state_dict:
+                state_dict = state_dict['model_state_dict']
+            
+            # Load the weights
+            model.load_state_dict(state_dict)
+            print("Successfully loaded existing model weights")
+            if logger:
+                logger.write("Successfully loaded existing model weights\n")
+            return True
+            
+        else:
+            print("No existing weights found. Starting from scratch.")
+            if logger:
+                logger.write("No existing weights found. Starting from scratch.\n")
+            return False
+            
+    except Exception as e:
+        print(f"Error loading weights: {str(e)}")
+        print("Starting from scratch due to loading error.")
+        if logger:
+            logger.write(f"Error loading weights: {str(e)}\n")
+            logger.write("Starting from scratch due to loading error.\n")
+        return False
+
 # predefined collate doesn't work with different size 
 def custom_collate_fn(batch):
     images = []
@@ -206,6 +253,13 @@ def train(args):
                                    num_classes=dataset_config['num_classes'])
     faster_rcnn_model.train()
     faster_rcnn_model.to(device)
+    weights_path = os.path.join(train_config['task_name'], train_config['ckpt_name'])
+    load_existing_weights(
+        model=faster_rcnn_model,
+        weights_path=weights_path,
+        device=device,
+        logger=open(train_info_path, 'a') if 'train_info_path' in locals() else None
+    )
 
     if not os.path.exists(train_config['task_name']):
         os.mkdirs(train_config['task_name'])

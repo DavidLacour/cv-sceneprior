@@ -114,6 +114,38 @@ def load_images_and_anns(im_dir, ann_dir,depth_dir, label2idx):
     return im_infos
 
 
+def normalize_depth_map(depth_map):
+    """
+    Normalize depth map using robust statistics to handle outliers
+    
+    Args:
+        depth_map (np.ndarray): Raw depth map
+        
+    Returns:
+        np.ndarray: Normalized depth map between 0 and 1
+    """
+    # Convert to float32 for processing
+    depth = depth_map.astype(np.float32)
+    
+    # Remove invalid values (if any)
+    valid_mask = depth > 0
+    if valid_mask.sum() == 0:
+        return np.zeros_like(depth)
+    
+    valid_depth = depth[valid_mask]
+    
+    # Calculate robust statistics
+    depth_min = np.percentile(valid_depth, 2)  # 2nd percentile instead of minimum
+    depth_max = np.percentile(valid_depth, 98)  # 98th percentile instead of maximum
+    
+    # Clip depth values to remove outliers
+    depth = np.clip(depth, depth_min, depth_max)
+    
+    # Normalize to [0, 1]
+    depth = (depth - depth_min) / (depth_max - depth_min + 1e-8)
+    
+    return depth
+
 class VOCDataset(Dataset):
     def __init__(self, split, im_dir, ann_dir,depth_dir):
         self.split = split
@@ -139,29 +171,24 @@ class VOCDataset(Dataset):
         Args:
             image_path (str): Path to RGB image
             depth_path (str): Path to depth map .npy file
+            normalize (bool): Whether to normalize the depth map
             
         Returns:
             torch.Tensor: Combined RGBD tensor with shape (4, H, W)
         """
         rgb_image = Image.open(image_path)
-        #rgb_image = cv2.imread(image_path)
         rgb_tensor = torchvision.transforms.ToTensor()(rgb_image)
         
-    
+        # Load depth map
         depth_map = np.load(depth_path)
         
         if normalize:
-            if depth_map.max() > 1:
-                depth_map = depth_map.astype(np.float32)
-                depth_map = (depth_map - depth_map.min()) / (depth_map.max() - depth_map.min())
-        
+            depth_map = normalize_depth_map(depth_map)
         
         depth_tensor = torch.from_numpy(depth_map).float().unsqueeze(0)
         
-        
         if depth_tensor.shape[1:] != rgb_tensor.shape[1:]:
             raise ValueError(f"Dimension mismatch: RGB shape {rgb_tensor.shape}, Depth shape {depth_tensor.shape}")
-        
         
         rgbd_tensor = torch.cat([rgb_tensor, depth_tensor], dim=0)
         return rgbd_tensor, rgb_image.size
