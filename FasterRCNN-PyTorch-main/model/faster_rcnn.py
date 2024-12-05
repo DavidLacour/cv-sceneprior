@@ -780,6 +780,60 @@ def get_depth_backbone(pretrained=True):
     vgg16.features[0] = new_conv_layer
     return vgg16.features[:-1]
 
+def get_depth_backbone_reduced(pretrained=True):
+    """Get lightweight VGG16-like backbone for depth channel with reduced parameters"""
+    vgg16 = torchvision.models.vgg16(pretrained=pretrained)
+    
+    # Create a new sequential container for our modified backbone
+    depth_backbone = nn.Sequential()
+    
+    # Modify first layer to accept single channel
+    first_conv_layer = vgg16.features[0]
+    new_conv_layer = nn.Conv2d(
+        in_channels=1,
+        out_channels=first_conv_layer.out_channels // 2,  # Reduce initial channels
+        kernel_size=first_conv_layer.kernel_size,
+        stride=first_conv_layer.stride,
+        padding=first_conv_layer.padding,
+        bias=first_conv_layer.bias is not None
+    )
+    
+    # Initialize weights using mean of RGB weights
+    with torch.no_grad():
+        weights = torch.mean(first_conv_layer.weight, dim=1, keepdim=True)
+        new_conv_layer.weight = nn.Parameter(weights[:new_conv_layer.out_channels])
+        if first_conv_layer.bias is not None:
+            new_conv_layer.bias = nn.Parameter(first_conv_layer.bias[:new_conv_layer.out_channels])
+    
+    depth_backbone.add_module('conv1', new_conv_layer)
+    depth_backbone.add_module('relu1', nn.ReLU(inplace=True))
+    
+    # Add depthwise separable convolutions instead of regular convolutions
+    def add_depthwise_separable_block(in_channels, out_channels, name):
+        # Depthwise convolution
+        depth_backbone.add_module(f'{name}_depthwise', nn.Conv2d(
+            in_channels, in_channels, kernel_size=3, padding=1, groups=in_channels))
+        depth_backbone.add_module(f'{name}_pointwise', nn.Conv2d(
+            in_channels, out_channels, kernel_size=1))
+        depth_backbone.add_module(f'{name}_relu', nn.ReLU(inplace=True))
+    
+    # Create a lighter architecture with fewer channels but same spatial dimensions
+    channel_configs = [
+        (64, 128),   # First block
+        (128, 256),  # Second block
+        (256, 512),  # Third block
+        (512, 512),  # Fourth block
+    ]
+    
+    current_channels = new_conv_layer.out_channels
+    for i, (_, out_channels) in enumerate(channel_configs):
+        add_depthwise_separable_block(current_channels, out_channels, f'block{i+1}')
+        depth_backbone.add_module(f'pool{i+1}', nn.MaxPool2d(kernel_size=2, stride=2))
+        current_channels = out_channels
+    
+    return depth_backbone
+
+
 class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
         super(FasterRCNN, self).__init__()
@@ -787,7 +841,7 @@ class FasterRCNN(nn.Module):
         
         
         self.rgb_backbone = get_rgb_backbone(pretrained=True)
-        self.depth_backbone = get_depth_backbone(pretrained=True)
+        self.depth_backbone = get_depth_backbone_reduced(pretrained=True)
         
         # Feature fusion layer to combine RGB and depth features
         self.feature_fusion = nn.Sequential(
