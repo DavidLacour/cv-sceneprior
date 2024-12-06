@@ -390,9 +390,11 @@ def train(args):
                 f.write("No best mAP recorded yet\n")
         
         # Create zip file of logs
+        """
         logs_zip_path = os.path.join(train_config['task_name'], f'tensorboard_logs_{timestamp}.zip')
         zip_logs(log_dir, logs_zip_path)
         print(f"\nTensorBoard logs saved to: {logs_zip_path}")
+        """
         print(f"Best model saved at: {best_model_path}")
         if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
             print(f"Best model saved at: {best_model_path}")
