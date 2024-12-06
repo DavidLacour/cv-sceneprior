@@ -18,6 +18,35 @@ from tools.infer import evaluate_map
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def cleanup_old_checkpoints(log_dir, current_epoch, patience):
+    """
+    Remove checkpoint files that are older than (current_epoch - patience)
+    This ensures we keep a rolling window of recent checkpoints while cleaning up older ones
+    
+    Args:
+        log_dir: Directory containing checkpoint files
+        current_epoch: Current training epoch
+        patience: Early stopping patience value
+    """
+    oldest_epoch_to_keep = max(0, current_epoch - patience)
+    
+    for filename in os.listdir(log_dir):
+        if filename.startswith("checkpoint_epoch_") and filename.endswith(".pth"):
+            try:
+                epoch_num = int(filename.split("_")[-1].split(".")[0])
+                checkpoint_path = os.path.join(log_dir, filename)
+                
+                # Remove checkpoints older than our window
+                if epoch_num < oldest_epoch_to_keep:
+                    try:
+                        os.remove(checkpoint_path)
+                        print(f"Removed old checkpoint: {filename}")
+                    except Exception as e:
+                        print(f"Error removing checkpoint {filename}: {str(e)}")
+            except ValueError:
+                # Skip files that don't match our naming pattern
+                continue
+
 
 def load_existing_weights(model, weights_path, device, logger=None):
     """
@@ -167,11 +196,12 @@ def save_final_state(best_weights_path,writer, train_info_path, best_model_path,
                     train_config['ckpt_name']))
     
     # Create zip file of logs
+    """
     logs_zip_path = os.path.join(train_config['task_name'], 
                                 f'tensorboard_logs_{timestamp}.zip')
     zip_logs(log_dir, logs_zip_path)
     print(f"\nTensorBoard logs saved to: {logs_zip_path}")
-    
+    """
     # Print final training status
     print(f"Best model checkpoint at: {best_model_path}")
     if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
@@ -426,7 +456,7 @@ def train(args):
                 f.write(f"  mAP: {map_score:.4f}\n")
             
             scheduler.step()
-            
+            cleanup_old_checkpoints(log_dir, epoch, patience=20)
             # Check for early stopping
             if early_stopping.early_stop:
                 print(f"Early stopping triggered at epoch {epoch}. Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
