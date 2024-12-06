@@ -277,7 +277,9 @@ def train(args):
 
     if not os.path.exists(train_config['task_name']):
         os.makedirs(train_config['task_name'])
-    load_existing_weights(faster_rcnn_model, train_config['task_name'], device, logger=None)
+    load_existing_weights(faster_rcnn_model, os.path.join(
+                    train_config['task_name'],
+                    train_config['ckpt_name']), device, logger=None)
     optimizer = torch.optim.SGD(lr=train_config['lr'],
                                params=filter(lambda p: p.requires_grad,
                                           faster_rcnn_model.parameters()),
