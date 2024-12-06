@@ -53,7 +53,7 @@ def load_existing_weights(model, weights_path, device, logger=None):
             return True
             
         else:
-            print("No existing weights found. Starting from scratch.")
+            print(" ################### No existing weights found. Starting from scratch.")
             if logger:
                 logger.write("No existing weights found. Starting from scratch.\n")
             return False
@@ -260,7 +260,6 @@ def train(args):
         device=device,
         logger=open(train_info_path, 'a') if 'train_info_path' in locals() else None
     )
-
     if not os.path.exists(train_config['task_name']):
         os.mkdirs(train_config['task_name'])
     optimizer = torch.optim.SGD(lr=train_config['lr'],
