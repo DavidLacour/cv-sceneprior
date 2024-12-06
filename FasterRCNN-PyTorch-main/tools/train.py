@@ -300,6 +300,10 @@ def train(args):
     global_step = 0
     training_start_time = time.time()
     best_model_path = None
+    best_weights_path = os.path.join(
+                    train_config['task_name'],
+                     "best" + train_config['ckpt_name'] 
+                )
 
     try:
         for epoch in range(num_epochs):
