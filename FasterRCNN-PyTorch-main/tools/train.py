@@ -19,6 +19,84 @@ from tools.infer import evaluate_map
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def cleanup_old_checkpoints(log_dir, current_epoch, patience):
+    """
+    Remove checkpoint files that are older than (current_epoch - patience)
+    This ensures we keep a rolling window of recent checkpoints while cleaning up older ones
+    
+    Args:
+        log_dir: Directory containing checkpoint files
+        current_epoch: Current training epoch
+        patience: Early stopping patience value
+    """
+    oldest_epoch_to_keep = max(0, current_epoch - patience)
+    
+    for filename in os.listdir(log_dir):
+        if filename.startswith("checkpoint_epoch_") and filename.endswith(".pth"):
+            try:
+                epoch_num = int(filename.split("_")[-1].split(".")[0])
+                checkpoint_path = os.path.join(log_dir, filename)
+                
+                # Remove checkpoints older than our window
+                if epoch_num < oldest_epoch_to_keep:
+                    try:
+                        os.remove(checkpoint_path)
+                        print(f"Removed old checkpoint: {filename}")
+                    except Exception as e:
+                        print(f"Error removing checkpoint {filename}: {str(e)}")
+            except ValueError:
+                # Skip files that don't match our naming pattern
+                continue
+
+
+def load_existing_weights(model, weights_path, device, logger=None):
+    """
+    Check for and load existing model weights if they exist.
+    
+    Args:
+        model: The model to load weights into
+        weights_path: Path to the weights file
+        device: torch device (cuda/cpu)
+        logger: Optional logging function or file
+    
+    Returns:
+        bool: True if weights were loaded successfully, False otherwise
+    """
+    try:
+        if os.path.exists(weights_path):
+            print(f"Found existing weights at {weights_path}")
+            if logger:
+                logger.write(f"Found existing weights at {weights_path}\n")
+            
+            # Load the state dict
+            state_dict = torch.load(weights_path, map_location=device)
+            
+            # Check if state_dict is wrapped in a checkpoint
+            if isinstance(state_dict, dict) and 'model_state_dict' in state_dict:
+                state_dict = state_dict['model_state_dict']
+            
+            # Load the weights
+            model.load_state_dict(state_dict)
+            print("Successfully loaded existing model weights")
+            if logger:
+                logger.write("Successfully loaded existing model weights\n")
+            return True
+            
+        else:
+            print(" ################### No existing weights found. Starting from scratch.")
+            if logger:
+                logger.write("No existing weights found. Starting from scratch.\n")
+            return False
+            
+    except Exception as e:
+        print(f"Error loading weights: {str(e)}")
+        print("Starting from scratch due to loading error.")
+        if logger:
+            logger.write(f"Error loading weights: {str(e)}\n")
+            logger.write("Starting from scratch due to loading error.\n")
+        return False
+
+
 class SubsetRandomSampler(Sampler):
     def __init__(self, dataset_size, num_samples):
         self.dataset_size = dataset_size
@@ -135,7 +213,7 @@ def train(args):
 
     if not os.path.exists(train_config['task_name']):
         os.makedirs(train_config['task_name'])
-    
+    load_existing_weights(faster_rcnn_model, train_config['task_name'], device, logger=None)
     optimizer = torch.optim.SGD(lr=train_config['lr'],
                                params=filter(lambda p: p.requires_grad,
                                           faster_rcnn_model.parameters()),
@@ -291,7 +369,7 @@ def train(args):
                 f.write(f"  mAP: {map_score:.4f}\n")
             
             scheduler.step()
-            
+            cleanup_old_checkpoints(log_dir, epoch, patience)
             # Check for early stopping
             if early_stopping.early_stop:
                 print(f"Early stopping triggered at epoch {epoch}. Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
