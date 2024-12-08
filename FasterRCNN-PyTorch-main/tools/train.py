@@ -370,6 +370,8 @@ def train(args):
             epoch_time = time.time() - epoch_start_time
             print(f'Finished epoch {epoch}, time taken: {epoch_time:.2f}s')
             
+            # Find this section in train.py and modify the validation loss calculations:
+
             # Calculate and log epoch metrics
             epoch_rpn_cls_loss = np.mean(rpn_classification_losses)
             epoch_rpn_loc_loss = np.mean(rpn_localization_losses)
@@ -380,21 +382,26 @@ def train(args):
             writer.add_scalar('Loss/Epoch/RPN_Localization_train', epoch_rpn_loc_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Classification_train', epoch_frcnn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/FRCNN_Localization_train', epoch_frcnn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/total_localization_train', epoch_rpn_loc_loss + epoch_frcnn_loc_loss, epoch )
+            writer.add_scalar('Loss/Epoch/total_localization_train', epoch_rpn_loc_loss + epoch_frcnn_loc_loss, epoch)
             writer.add_scalar('Training/Epoch_Time', epoch_time, epoch)
 
-            val_epoch_rpn_cls_loss = np.mean(val_rpn_classification_losses)
-            val_epoch_rpn_loc_loss = np.mean(val_rpn_localization_losses)
-            val_epoch_frcnn_cls_loss = np.mean(val_frcnn_classification_losses)
-            val_epoch_frcnn_loc_loss = np.mean(val_frcnn_localization_losses)
+            # Move validation tensors to CPU before converting to numpy
+            val_rpn_cls_losses = [loss.cpu().detach().numpy() for loss in val_rpn_classification_losses]
+            val_rpn_loc_losses = [loss.cpu().detach().numpy() for loss in val_rpn_localization_losses]
+            val_frcnn_cls_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_classification_losses]
+            val_frcnn_loc_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_localization_losses]
+
+            val_epoch_rpn_cls_loss = np.mean(val_rpn_cls_losses)
+            val_epoch_rpn_loc_loss = np.mean(val_rpn_loc_losses)
+            val_epoch_frcnn_cls_loss = np.mean(val_frcnn_cls_losses)
+            val_epoch_frcnn_loc_loss = np.mean(val_frcnn_loc_losses)
 
             # Log validation loss to TensorBoard
             writer.add_scalar('Loss/Epoch/RPN_Classification_validation', val_epoch_rpn_cls_loss, epoch)
             writer.add_scalar('Loss/Epoch/RPN_Localization_validation', val_epoch_rpn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation',  val_epoch_frcnn_cls_loss, epoch)
-            writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation',  val_epoch_frcnn_loc_loss, epoch)
-            writer.add_scalar('Loss/Epoch/total_localization_validation',  val_epoch_rpn_loc_loss +  val_epoch_frcnn_loc_loss, epoch )
-            
+            writer.add_scalar('Loss/Epoch/FRCNN_Classification_validation', val_epoch_frcnn_cls_loss, epoch)
+            writer.add_scalar('Loss/Epoch/FRCNN_Localization_validation', val_epoch_frcnn_loc_loss, epoch)
+            writer.add_scalar('Loss/Epoch/total_localization_validation', val_epoch_rpn_loc_loss + val_epoch_frcnn_loc_loss, epoch)
 
 
             print(f"Epoch {epoch}: trianLoss = {epoch_frcnn_loc_loss}")
