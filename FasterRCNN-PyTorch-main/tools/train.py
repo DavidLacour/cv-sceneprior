@@ -63,7 +63,7 @@ def load_existing_weights(model, weights_path, device, logger=None):
     """
     try:
         if os.path.exists(weights_path):
-            print(f"Found existing weights at {weights_path}")
+            print(f" ###################  Found existing weights at {weights_path}")
             if logger:
                 logger.write(f"Found existing weights at {weights_path}\n")
             
@@ -76,7 +76,7 @@ def load_existing_weights(model, weights_path, device, logger=None):
             
             # Load the weights
             model.load_state_dict(state_dict)
-            print("Successfully loaded existing model weights")
+            print(" ###################  Successfully loaded existing model weights")
             if logger:
                 logger.write("Successfully loaded existing model weights\n")
             return True
@@ -88,7 +88,7 @@ def load_existing_weights(model, weights_path, device, logger=None):
             return False
             
     except Exception as e:
-        print(f"Error loading weights: {str(e)}")
+        print(f"  ###################  Error loading weights: {str(e)}")
         print("Starting from scratch due to loading error.")
         if logger:
             logger.write(f"Error loading weights: {str(e)}\n")
