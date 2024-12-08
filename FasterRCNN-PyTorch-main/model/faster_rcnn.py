@@ -755,10 +755,41 @@ def get_rgb_backbone(pretrained=True):
     vgg16 = torchvision.models.vgg16(pretrained=pretrained)
     return vgg16.features[:-1]  # Returns full VGG16 backbone (512 channels)
 
-def get_depth_backbone():
-    """Simple backbone for depth channel that maintains 1 channel"""
+def get_depth_backbone(pretrained=True):
+    """Get VGG16 backbone for RGBD processing that outputs 1 channel"""
+    vgg16 = torchvision.models.vgg16(pretrained=pretrained)
+    
+    # Modify first layer to accept 4 channels (RGB+D)
+    first_conv_layer = vgg16.features[0]
+    new_conv_layer = nn.Conv2d(
+        in_channels=4,  # RGB + Depth
+        out_channels=first_conv_layer.out_channels,
+        kernel_size=first_conv_layer.kernel_size,
+        stride=first_conv_layer.stride,
+        padding=first_conv_layer.padding,
+        bias=first_conv_layer.bias is not None
+    )
+    
+    # Initialize new conv layer with pretrained weights for RGB channels
+    # and initialize depth channel with mean of RGB weights
+    if pretrained:
+        with torch.no_grad():
+            # Copy RGB weights directly
+            new_conv_layer.weight[:, :3, :, :] = first_conv_layer.weight
+            # Initialize depth channel with mean of RGB weights
+            new_conv_layer.weight[:, 3:, :, :] = torch.mean(
+                first_conv_layer.weight, dim=1, keepdim=True
+            )
+            if first_conv_layer.bias is not None:
+                new_conv_layer.bias = nn.Parameter(first_conv_layer.bias.clone())
+    
+    # Replace first layer
+    vgg16.features[0] = new_conv_layer
+    
+    # Create complete backbone with channel reduction at the end
     return nn.Sequential(
-        nn.Conv2d(1, 1, kernel_size=3, padding=1),
+        vgg16.features[:-1],  # Use VGG16 features except last maxpool
+        nn.Conv2d(512, 1, kernel_size=1),  # Reduce to 1 channel
         nn.ReLU(inplace=True),
         nn.BatchNorm2d(1)
     )
@@ -768,29 +799,37 @@ class FasterRCNN(nn.Module):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
         
-        # Get backbones for RGB and depth streams
-        self.rgb_backbone = get_rgb_backbone(pretrained=True)
-        self.depth_backbone = get_depth_backbone()
+        # Get backbones
+        self.rgb_backbone = get_rgb_backbone(pretrained=True)  # Original RGB VGG16 -> 512 channels
+        self.rgbd_backbone = get_depth_backbone(pretrained=True)  # Modified RGBD VGG16 -> 1 channel
         
-        # Feature fusion layer to combine RGB (512) and depth (1) features
-        self.feature_fusion = nn.Sequential(
-            nn.Conv2d(512 + 1, model_config['backbone_out_channels'], kernel_size=1),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm2d(model_config['backbone_out_channels'])
-        )
-        
-        self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
+        # Update input channels for RPN and ROI head to 513
+        self.rpn = RegionProposalNetwork(513,  # Changed from backbone_out_channels to 513
                                        scales=model_config['scales'],
                                        aspect_ratios=model_config['aspect_ratios'],
                                        model_config=model_config)
         
         self.roi_head = ROIHead(model_config, num_classes, 
-                               in_channels=model_config['backbone_out_channels'])
+                               in_channels=513)  # Changed from backbone_out_channels to 513
         
         self.image_mean = [0.485, 0.456, 0.406, 25.0]  # RGB + depth mean
         self.image_std = [0.229, 0.224, 0.225, 10.0]   # RGB + depth std
         self.min_size = model_config['min_im_size']
         self.max_size = model_config['max_im_size']
+    
+    def backbone(self, x):
+        # Process through original RGB backbone
+        rgb_features = self.rgb_backbone(x[:, :3])  # Gets 512 channels
+        
+        # Process full RGBD through second backbone
+        rgbd_features = self.rgbd_backbone(x)  # Gets 1 channel
+        
+        # Concatenate the features instead of adding them
+        # rgb_features: (batch_size, 512, H, W)
+        # rgbd_features: (batch_size, 1, H, W)
+        enhanced_features = torch.cat([rgb_features, rgbd_features], dim=1)  # Result: (batch_size, 513, H, W)
+        
+        return enhanced_features
     
     def process_features(self, x):
         # Split input into RGB and depth channels
@@ -866,31 +905,17 @@ class FasterRCNN(nn.Module):
             bboxes = torch.stack((xmin, ymin, xmax, ymax), dim=2)
         return image, bboxes
     
-    def backbone(self, x):
-        # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  
-        depth_input = x[:, 3:].unsqueeze(1) 
-
-        rgb_features = self.rgb_backbone(rgb_input)
-        depth_features = self.depth_backbone(depth_input)
-        combined_features = torch.cat([rgb_features, depth_features], dim=1)
-        
-        fused_features = self.feature_fusion(combined_features)
-        
-        return fused_features
-    
     
     def forward(self, image, target=None):
         old_shape = image.shape[-2:]
         if self.training:
-            # Normalize and resize boxes
             image, bboxes = self.normalize_resize_image_and_boxes(image, target['bboxes'])
             target['bboxes'] = bboxes
         else:
             image, _ = self.normalize_resize_image_and_boxes(image, None)
         
         # Call backbone
-        feat = self.process_features(image)
+        feat = self.backbone(image)
         
         # Call RPN and get proposals
         rpn_output = self.rpn(image, feat, target)
@@ -900,8 +925,9 @@ class FasterRCNN(nn.Module):
         frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
         
         if not self.training:
-            # Transform boxes to original image dimensions called only during inference
-            frcnn_output['boxes'] = transform_boxes_to_original_size(frcnn_output['boxes'],
-                                                                   image.shape[-2:],
-                                                                   old_shape)
+            frcnn_output['boxes'] = transform_boxes_to_original_size(
+                frcnn_output['boxes'],
+                image.shape[-2:],
+                old_shape
+            )
         return rpn_output, frcnn_output
