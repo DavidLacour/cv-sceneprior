@@ -751,9 +751,15 @@ class ROIHead(nn.Module):
 
 
 def get_rgb_backbone(pretrained=True):
-    """Get VGG16 backbone for RGB channels"""
+    """Get VGG16 backbone for RGB channels with frozen parameters"""
     vgg16 = torchvision.models.vgg16(pretrained=pretrained)
-    return vgg16.features[:-1]  # Returns full VGG16 backbone (512 channels)
+    
+    # Freeze all parameters in the RGB backbone
+    if pretrained:
+        for param in vgg16.features.parameters():
+            param.requires_grad = False
+            
+    return vgg16.features[:-1] # Returns full VGG16 backbone (512 channels)
 
 def get_depth_backbone(pretrained=True):
     """Get VGG16 backbone for RGBD processing that outputs 1 channel"""
@@ -818,8 +824,9 @@ class FasterRCNN(nn.Module):
         self.max_size = model_config['max_im_size']
     
     def backbone(self, x):
+        with torch.no_grad():  # Ensure no gradients are computed for RGB backbone
+            rgb_features = self.rgb_backbone(x[:, :3])  # Gets 512 channels
         # Process through original RGB backbone
-        rgb_features = self.rgb_backbone(x[:, :3])  # Gets 512 channels
         
         # Process full RGBD through second backbone
         rgbd_features = self.rgbd_backbone(x)  # Gets 1 channel
