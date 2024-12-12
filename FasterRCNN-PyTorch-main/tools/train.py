@@ -18,6 +18,45 @@ from tools.infer import evaluate_map
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def cleanup_all_checkpoints(log_dir, best_model_path=None):
+    """
+    Remove all checkpoint files from the log directory except for the best model checkpoint.
+    Only removes files that contain 'checkpoint' in their name.
+    
+    Args:
+        log_dir: Directory containing checkpoint files
+        best_model_path: Optional path to the best model checkpoint to preserve
+    """
+    checkpoint_count = 0
+    saved_space = 0
+    
+    try:
+        for filename in os.listdir(log_dir):
+            if filename.endswith(".pth") and "checkpoint" in filename.lower():
+                file_path = os.path.join(log_dir, filename)
+                
+                # Skip the best model checkpoint if specified
+                if best_model_path and file_path == best_model_path:
+                    continue
+                    
+                # Get file size before deletion for reporting
+                file_size = os.path.getsize(file_path)
+                saved_space += file_size
+                
+                # Remove the checkpoint
+                try:
+                    os.remove(file_path)
+                    checkpoint_count += 1
+                    print(f"Removed checkpoint: {filename}")
+                except Exception as e:
+                    print(f"Error removing {filename}: {str(e)}")
+                
+        print(f"Cleanup complete: Removed {checkpoint_count} checkpoints")
+        print(f"Freed up {saved_space / (1024*1024):.2f} MB of disk space")
+        
+    except Exception as e:
+        print(f"Error during checkpoint cleanup: {str(e)}")
+
 def cleanup_old_checkpoints(log_dir, current_epoch, patience):
     """
     Remove checkpoint files that are older than (current_epoch - patience)
@@ -206,6 +245,8 @@ def save_final_state(best_weights_path,writer, train_info_path, best_model_path,
     print(f"Best model checkpoint at: {best_model_path}")
     if early_stopping.best_map is not None and early_stopping.best_epoch is not None:
         print(f"Best mAP: {early_stopping.best_map:.4f} at epoch {early_stopping.best_epoch}")
+    print("\nCleaning up checkpoints...")
+    cleanup_all_checkpoints(log_dir, best_model_path)
 
 
 
