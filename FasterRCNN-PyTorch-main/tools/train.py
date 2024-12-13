@@ -185,7 +185,7 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'],
                      depth_dir=dataset_config['depth_path'])
     
-    val_dataset = VOCDataset('train',
+    val_dataset = VOCDataset('val',
                      im_dir=dataset_config['im_val_path'],
                      ann_dir=dataset_config['ann_val_path'],
                      depth_dir=dataset_config['depth_path'])
