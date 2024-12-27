@@ -149,7 +149,7 @@ class VOCDataset(Dataset):
         
     
         depth_map = np.load(depth_path)
-        
+        # do the mean on all dataset !!!! or take one distance 
         if normalize:
             if depth_map.max() > 1:
                 depth_map = depth_map.astype(np.float32)

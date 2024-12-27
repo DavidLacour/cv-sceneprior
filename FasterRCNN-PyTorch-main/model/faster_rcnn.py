@@ -823,12 +823,14 @@ class FasterRCNN(nn.Module):
         dtype, device = image.dtype, image.device
         
         # Normalize
-        #mean = torch.as_tensor(self.image_mean[:3], dtype=dtype, device=device)
-        #std = torch.as_tensor(self.image_std[:3], dtype=dtype, device=device)
+        mean = torch.as_tensor(self.image_mean[:3], dtype=dtype, device=device)
+        std = torch.as_tensor(self.image_std[:3], dtype=dtype, device=device)
     
         # Apply normalization to the first 3 channels only
-        #image[0:3] = (image[0:3] - mean[:, None, None]) / std[:, None, None]
+        print(image.size())
+        image[0:3] = (image[0:3] - mean[:, None, None]) / std[:, None, None]
         #############
+        print(image.size())
         
         # Resize to 1000x600 such that lowest size dimension is scaled upto 600
         # but larger dimension is not more than 1000
