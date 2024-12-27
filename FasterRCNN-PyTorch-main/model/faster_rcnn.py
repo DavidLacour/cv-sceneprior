@@ -759,8 +759,17 @@ class FasterRCNN(nn.Module):
                     p.requires_grad = False
         
         """
-        self.image_mean = [0.485, 0.456, 0.406]
-        self.image_std = [0.229, 0.224, 0.225]
+        #0.438196078
+        #0.459960784
+        #0.443333333
+        #0.208980392
+        #0.19745098
+        #0.204784314
+        #self.image_mean = [0.485, 0.456, 0.406]
+        #self.image_std = [0.229, 0.224, 0.225]
+        self.image_mean = [0.438196078, 0.459960784, 0.443333333]
+        self.image_std = [0.208980392, 0.19745098, 0.204784314]
+
         self.min_size = model_config['min_im_size']
         self.max_size = model_config['max_im_size']
     
@@ -768,9 +777,11 @@ class FasterRCNN(nn.Module):
         dtype, device = image.dtype, image.device
         
         # Normalize
+        print(image[0,0,0,0])
         mean = torch.as_tensor(self.image_mean, dtype=dtype, device=device)
         std = torch.as_tensor(self.image_std, dtype=dtype, device=device)
         image = (image - mean[:, None, None]) / std[:, None, None]
+        print(image[0,0,0,0])
         #############
         
         # Resize to 1000x600 such that lowest size dimension is scaled upto 600
