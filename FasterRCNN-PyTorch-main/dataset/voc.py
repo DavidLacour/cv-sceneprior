@@ -150,10 +150,10 @@ class VOCDataset(Dataset):
     
         depth_map = np.load(depth_path)
         # do the mean on all dataset !!!! or take one distance 
-        if normalize:
-            if depth_map.max() > 1:
-                depth_map = depth_map.astype(np.float32)
-                depth_map = (depth_map - 0.0) / (80.37408457570382)
+        #if normalize:
+        #    if depth_map.max() > 1:
+        #        depth_map = depth_map.astype(np.float32)
+        #        depth_map = (depth_map - 0.0) / (80.37408457570382)
         
         
         depth_tensor = torch.from_numpy(depth_map).float().unsqueeze(0)
