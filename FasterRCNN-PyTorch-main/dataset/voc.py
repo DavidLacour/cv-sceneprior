@@ -153,7 +153,7 @@ class VOCDataset(Dataset):
         if normalize:
             if depth_map.max() > 1:
                 depth_map = depth_map.astype(np.float32)
-                depth_map = (depth_map - depth_map.min()) / (depth_map.max() - depth_map.min())
+                depth_map = (depth_map - 0.0) / (80.37408457570382)
         
         
         depth_tensor = torch.from_numpy(depth_map).float().unsqueeze(0)
