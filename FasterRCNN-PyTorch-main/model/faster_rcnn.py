@@ -777,11 +777,11 @@ class FasterRCNN(nn.Module):
         dtype, device = image.dtype, image.device
         
         # Normalize
-        # print(image[0,0,0,0])
+        print(image[0,0,0,0])
         mean = torch.as_tensor(self.image_mean, dtype=dtype, device=device)
         std = torch.as_tensor(self.image_std, dtype=dtype, device=device)
         image = (image - mean[:, None, None]) / std[:, None, None]
-         #print(image[0,0,0,0])
+        print(image[0,0,0,0])
         #############
         
         # Resize to 1000x600 such that lowest size dimension is scaled upto 600
