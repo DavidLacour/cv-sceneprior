@@ -34,7 +34,7 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../new_run_for_inference' 
+  task_name: '../../noPretraining' 
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
@@ -44,5 +44,5 @@ train_params:
   batch_size : 8
   sampler : True
   num_samples_per_epoch : 1000
-  patience : 3
+  patience : 60
 
