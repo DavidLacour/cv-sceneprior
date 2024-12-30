@@ -120,7 +120,7 @@ def zip_logs(log_dir, output_path):
                 zipf.write(file_path, arcname)
 
 class EarlyStopping:
-    def __init__(self, patience=3, min_delta=0.0001):
+    def __init__(self, patience=60, min_delta=0.0001):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
