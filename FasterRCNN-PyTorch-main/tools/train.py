@@ -496,11 +496,11 @@ def train(args):
 
             #calulate map for each set 
             train_map_score = evaluate_map(args,validation_set=False,training_set=True)
-            val_map_score = evaluate_map(args,validation_set=True)
+            val_map_score = evaluate_map(args,validation_set=True,training_set=False)
             test_map_score = evaluate_map(args,validation_set=False,training_set=False)
            
           
-            writer.add_scalar(' train_map', train_map_score, epoch)
+            writer.add_scalar('train_map', train_map_score, epoch)
             writer.add_scalar('val_map', val_map_score, epoch)
             writer.add_scalar('test_map', test_map_score, epoch)
 
