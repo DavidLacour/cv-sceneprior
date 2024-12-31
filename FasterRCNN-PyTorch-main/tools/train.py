@@ -19,6 +19,38 @@ from tools.infer import evaluate_map
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
+
+def cleanup_old_checkpoints(log_dir, current_epoch, patience):
+    """
+    Remove checkpoint files that are older than (current_epoch - patience)
+    This ensures we keep a rolling window of recent checkpoints while cleaning up older ones
+    
+    Args:
+        log_dir: Directory containing checkpoint files
+        current_epoch: Current training epoch
+        patience: Early stopping patience value
+    """
+    oldest_epoch_to_keep = max(0, current_epoch - patience)
+    
+    for filename in os.listdir(log_dir):
+        if filename.startswith("checkpoint_epoch_") and filename.endswith(".pth"):
+            try:
+                epoch_num = int(filename.split("_")[-1].split(".")[0])
+                checkpoint_path = os.path.join(log_dir, filename)
+                
+                # Remove checkpoints older than our window
+                if epoch_num < oldest_epoch_to_keep:
+                    try:
+                        os.remove(checkpoint_path)
+                        print(f"Removed old checkpoint: {filename}")
+                    except Exception as e:
+                        print(f"Error removing checkpoint {filename}: {str(e)}")
+            except ValueError:
+                # Skip files that don't match our naming pattern
+                continue
+
+
+
 # predefined collate doesn't work with different size 
 def custom_collate_fn(batch):
     images = []
