@@ -362,7 +362,7 @@ def train(args):
             # faster_rcnn_model.eval()  # Set model to evaluation mode crahes
             val_loss = 0.0
             with torch.no_grad():  # Disable gradient computation
-                for val_im, val_target in tqdm(val_dataloader):
+                for val_im, val_target, fname in tqdm(val_dataloader):
                     val_im = val_im.float().to(device)
                     val_target['bboxes'] = val_target['bboxes'].float().to(device)
                     val_target['labels'] = val_target['labels'].long().to(device)
@@ -374,7 +374,7 @@ def train(args):
                     val_frcnn_classification_losses.append(val_frcnn_output['frcnn_classification_loss'])
                     val_frcnn_localization_losses.append(val_frcnn_output['frcnn_localization_loss'])
 
-                for test_im, test_target in tqdm(val_dataloader):
+                for test_im, test_target, fname in tqdm(test_dataloader):
                     test_im = test_im.float().to(device)
                     test_target['bboxes'] = test_target['bboxes'].float().to(device)
                     test_target['labels'] = test_target['labels'].long().to(device)
