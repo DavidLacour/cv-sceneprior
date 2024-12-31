@@ -458,10 +458,10 @@ def train(args):
             writer.add_scalar('val_Total_RPN_loss',val_total_rpn_loss,epoch)
             writer.add_scalar('val_Total_overall_loss',val_total_overall_loss,epoch)
 
-            test_rpn_cls_losses = [loss.cpu().detach().numpy() for loss in val_rpn_classification_losses]
-            test_rpn_loc_losses = [loss.cpu().detach().numpy() for loss in val_rpn_localization_losses]
-            test_frcnn_cls_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_classification_losses]
-            test_frcnn_loc_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_localization_losses]
+            test_rpn_cls_losses = [loss.cpu().detach().numpy() for loss in test_rpn_classification_losses]
+            test_rpn_loc_losses = [loss.cpu().detach().numpy() for loss in test_rpn_localization_losses]
+            test_frcnn_cls_losses = [loss.cpu().detach().numpy() for loss in test_frcnn_classification_losses]
+            test_frcnn_loc_losses = [loss.cpu().detach().numpy() for loss in test_frcnn_localization_losses]
 
             test_epoch_rpn_cls_loss = np.mean(test_rpn_cls_losses)
             test_epoch_rpn_loc_loss = np.mean(test_rpn_loc_losses)
@@ -496,11 +496,11 @@ def train(args):
 
             #calulate map for each set 
             train_map_score = evaluate_map(args,validation_set=False,training_set=True)
-            val_map_score = evaluate_map(args,validation_set=True)
+            val_map_score = evaluate_map(args,validation_set=True,training_set=False)
             test_map_score = evaluate_map(args,validation_set=False,training_set=False)
            
           
-            writer.add_scalar(' train_map', train_map_score, epoch)
+            writer.add_scalar('train_map', train_map_score, epoch)
             writer.add_scalar('val_map', val_map_score, epoch)
             writer.add_scalar('test_map', test_map_score, epoch)
 
