@@ -132,7 +132,7 @@ class VOCDataset(Dataset):
     def __len__(self):
         return len(self.images_info)
     
-    def load_image_with_depth(self, image_path, depth_path, normalize=True):
+    def load_image_with_depth(self, image_path, depth_path, normalize=False):
         """
         Load and combine RGB image with depth map
         
@@ -151,9 +151,9 @@ class VOCDataset(Dataset):
         depth_map = np.load(depth_path)
         
         
-        if normalize:
-            depth_map = depth_map.astype(np.float32)
-            depth_map = (depth_map - 0.0) / (80.37408457570382)
+        #if normalize:
+        #    depth_map = depth_map.astype(np.float32)
+        #    depth_map = (depth_map - 0.0) / (80.37408457570382)
         
         
         depth_tensor = torch.from_numpy(depth_map).float().unsqueeze(0)
