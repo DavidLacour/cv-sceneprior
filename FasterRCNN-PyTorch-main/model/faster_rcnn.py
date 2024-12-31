@@ -744,7 +744,7 @@ class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
         super(FasterRCNN, self).__init__()
         self.model_config = model_config
-        pretrained=False
+        pretrained=True
         vgg16 = torchvision.models.vgg16(pretrained=pretrained)
         self.backbone = vgg16.features[:-1]
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
