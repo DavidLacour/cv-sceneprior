@@ -204,7 +204,8 @@ def train(args):
     
     test_dataset = VOCDataset('test',
                      im_dir=dataset_config['im_test_path'],
-                     ann_dir=dataset_config['ann_test_path'])
+                     ann_dir=dataset_config['ann_test_path'],
+                     depth_dir=dataset_config['depth_path'])
     
     test_dataloader = DataLoader(test_dataset,
                              batch_size=1,
