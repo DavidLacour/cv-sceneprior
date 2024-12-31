@@ -449,10 +449,10 @@ def train(args):
             writer.add_scalar('val_Total_RPN_loss',val_total_rpn_loss,epoch)
             writer.add_scalar('val_Total_overall_loss',val_total_overall_loss,epoch)
 
-            test_rpn_cls_losses = [loss.cpu().detach().numpy() for loss in val_rpn_classification_losses]
-            test_rpn_loc_losses = [loss.cpu().detach().numpy() for loss in val_rpn_localization_losses]
-            test_frcnn_cls_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_classification_losses]
-            test_frcnn_loc_losses = [loss.cpu().detach().numpy() for loss in val_frcnn_localization_losses]
+            test_rpn_cls_losses = [loss.cpu().detach().numpy() for loss in test_rpn_classification_losses]
+            test_rpn_loc_losses = [loss.cpu().detach().numpy() for loss in test_rpn_localization_losses]
+            test_frcnn_cls_losses = [loss.cpu().detach().numpy() for loss in test_frcnn_classification_losses]
+            test_frcnn_loc_losses = [loss.cpu().detach().numpy() for loss in test_frcnn_localization_losses]
 
             test_epoch_rpn_cls_loss = np.mean(test_rpn_cls_losses)
             test_epoch_rpn_loc_loss = np.mean(test_rpn_loc_losses)
@@ -475,7 +475,7 @@ def train(args):
 
 
 
-            print(f"Epoch {epoch}: train frcnn nLoss = {train_total_frcnn_loss}")
+            print(f"Epoch {epoch}: train frcnn Loss = {train_total_frcnn_loss}")
             print(f"Epoch {epoch}: Validation frcnn Loss = {val_total_frcnn_loss}")
             print(f"Epoch {epoch}: test frcnn Loss = {test_total_frcnn_loss}")
 
