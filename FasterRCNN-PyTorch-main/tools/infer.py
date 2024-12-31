@@ -149,7 +149,7 @@ def compute_map(det_boxes, gt_boxes, iou_threshold=0.5, method='area'):
     return mean_ap, all_aps
 
 
-def load_model_and_dataset(args, validation_set=False):
+def load_model_and_dataset(args, validation_set=False,training_set=False):
     # Read the config file #
     with open(args.config_path, 'r') as file:
         try:
@@ -169,10 +169,15 @@ def load_model_and_dataset(args, validation_set=False):
     random.seed(seed)
     if device == 'cuda':
         torch.cuda.manual_seed_all(seed)
-    if not validation_set:
-        voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'])
+    #if not validation_set:
+    #    voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'])
+    if(validation_set): 
+        voc = VOCDataset('test', im_dir=dataset_config['im_val_path'], ann_dir=dataset_config['ann_val_path'])
+    elif(training_set):
+        voc = VOCDataset('test', im_dir=dataset_config['im_train_path'], ann_dir=dataset_config['ann_train_path'])
     else: 
-         voc = VOCDataset('test', im_dir=dataset_config['im_val_path'], ann_dir=dataset_config['ann_val_path'])
+        voc = VOCDataset('test', im_dir=dataset_config['im_test_path'], ann_dir=dataset_config['ann_test_path'])
+
     test_dataset = DataLoader(voc, batch_size=1, shuffle=False)
     
     faster_rcnn_model = FasterRCNN(model_config, num_classes=dataset_config['num_classes'])
@@ -263,8 +268,8 @@ def infer(args):
         cv2.imwrite('samples/output_frcnn_{}.jpg'.format(sample_count), im)
 
 
-def evaluate_map(args, validation_set=False):
-    faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args, validation_set=validation_set)
+def evaluate_map(args, validation_set=False,training_set=False):
+    faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args, validation_set=validation_set,training_set=training_set)
     gts = []
     preds = []
     for im, target, fname in tqdm(test_dataset):
