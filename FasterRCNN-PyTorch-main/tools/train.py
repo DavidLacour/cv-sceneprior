@@ -484,7 +484,7 @@ def train(args):
 
 
 
-            print(f"Epoch {epoch}: train frcnn nLoss = {train_total_frcnn_loss}")
+            print(f"Epoch {epoch}: train frcnn Loss = {train_total_frcnn_loss}")
             print(f"Epoch {epoch}: Validation frcnn Loss = {val_total_frcnn_loss}")
             print(f"Epoch {epoch}: test frcnn Loss = {test_total_frcnn_loss}")
 
