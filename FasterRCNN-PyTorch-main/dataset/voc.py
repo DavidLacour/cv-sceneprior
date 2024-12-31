@@ -132,7 +132,7 @@ class VOCDataset(Dataset):
     def __len__(self):
         return len(self.images_info)
     
-    def load_image_with_depth(self, image_path, depth_path, normalize=True):
+    def load_image_with_depth(self, image_path, depth_path, normalize=False):
         """
         Load and combine RGB image with depth map
         
