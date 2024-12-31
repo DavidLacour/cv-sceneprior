@@ -266,6 +266,53 @@ def infer(args):
                         fontFace=cv2.FONT_HERSHEY_PLAIN)
         cv2.addWeighted(im_copy, 0.7, im, 0.3, 0, im)
         cv2.imwrite('samples/output_frcnn_{}.jpg'.format(sample_count), im)
+        for idx, box in enumerate(target['bboxes']):
+            x1, y1, x2, y2 = box.detach().cpu().numpy()
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            
+            cv2.rectangle(gt_im, (x1, y1), (x2, y2), thickness=2, color=[0, 255, 0])
+            cv2.rectangle(gt_im_copy, (x1, y1), (x2, y2), thickness=2, color=[0, 255, 0])
+            text = voc.idx2label[target['labels'][idx].detach().cpu().item()]
+            text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_PLAIN, 1, 1)
+            text_w, text_h = text_size
+            cv2.rectangle(gt_im_copy , (x1, y1), (x1 + 10+text_w, y1 + 10+text_h), [255, 255, 255], -1)
+            cv2.putText(gt_im, text=voc.idx2label[target['labels'][idx].detach().cpu().item()],
+                        org=(x1+5, y1+15),
+                        thickness=1,
+                        fontScale=1,
+                        color=[0, 0, 0],
+                        fontFace=cv2.FONT_HERSHEY_PLAIN)
+            cv2.putText(gt_im_copy, text=text,
+                        org=(x1 + 5, y1 + 15),
+                        thickness=1,
+                        fontScale=1,
+                        color=[0, 0, 0],
+                        fontFace=cv2.FONT_HERSHEY_PLAIN)
+            x1, y1, x2, y2 = box.detach().cpu().numpy()
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            cv2.rectangle(im, (x1, y1), (x2, y2), thickness=2, color=[0, 0, 255])
+            cv2.rectangle(im_copy, (x1, y1), (x2, y2), thickness=2, color=[0, 0, 255])
+            text = '{} : {:.2f}'.format(voc.idx2label[labels[idx].detach().cpu().item()],
+                                        scores[idx].detach().cpu().item())
+            text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_PLAIN, 1, 1)
+            text_w, text_h = text_size
+            cv2.rectangle(im_copy , (x1, y1), (x1 + 10+text_w, y1 + 10+text_h), [255, 255, 255], -1)
+            cv2.putText(im, text=text,
+                        org=(x1+5, y1+15),
+                        thickness=1,
+                        fontScale=1,
+                        color=[0, 0, 0],
+                        fontFace=cv2.FONT_HERSHEY_PLAIN)
+            cv2.putText(im_copy, text=text,
+                        org=(x1 + 5, y1 + 15),
+                        thickness=1,
+                        fontScale=1,
+                        color=[0, 0, 0],
+                        fontFace=cv2.FONT_HERSHEY_PLAIN)
+        cv2.addWeighted(gt_im_copy, 0.7, gt_im, 0.3, 0, gt_im)
+        cv2.imwrite('samples/output_frcnn_both_{}.png'.format(sample_count), gt_im)
+            
+
 
 
 def evaluate_map(args, validation_set=False,training_set=False):
