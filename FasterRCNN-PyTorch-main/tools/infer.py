@@ -189,7 +189,9 @@ def load_model_and_dataset(args, validation_set=False,training_set=False):
     return faster_rcnn_model, voc, test_dataset
 
 
+
 def infer(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if not os.path.exists('samples'):
         os.mkdir('samples')
     faster_rcnn_model, voc, test_dataset = load_model_and_dataset(args)
@@ -197,15 +199,21 @@ def infer(args):
     # Hard coding the low score threshold for inference on images for now
     # Should come from config
     faster_rcnn_model.roi_head.low_score_threshold = 0.7
-   
+    if args.forcecpu:
+        device = torch.device('cpu')
     
     for sample_count in tqdm(range(10)):
         random_idx = random.randint(0, len(voc))
         im, target, fname = voc[random_idx]
         im = im.unsqueeze(0).float().to(device)
-
+      
+        
+        # gt_im =  np.load(fname, allow_pickle=True)
+        #gt_im = Image.open(image_path)
+        #gt_im_copy = gt_im.copy()
         gt_im = cv2.imread(fname)
         gt_im_copy = gt_im.copy()
+        
         
         # Saving images with ground truth boxes
         for idx, box in enumerate(target['bboxes']):
@@ -232,14 +240,17 @@ def infer(args):
                         fontFace=cv2.FONT_HERSHEY_PLAIN)
         cv2.addWeighted(gt_im_copy, 0.7, gt_im, 0.3, 0, gt_im)
         cv2.imwrite('samples/output_frcnn_gt_{}.png'.format(sample_count), gt_im)
-        
+        im.fname = fname
         # Getting predictions from trained model
         rpn_output, frcnn_output = faster_rcnn_model(im, None)
+
         boxes = frcnn_output['boxes']
         labels = frcnn_output['labels']
         scores = frcnn_output['scores']
+        #im = np.load(fname, allow_pickle=True)
+        #im_copy = im.copy()
         im = cv2.imread(fname)
-        im_copy = im.copy()
+        im_copy = gt_im.copy()
         
         # Saving images with predicted boxes
         for idx, box in enumerate(boxes):
@@ -266,51 +277,6 @@ def infer(args):
                         fontFace=cv2.FONT_HERSHEY_PLAIN)
         cv2.addWeighted(im_copy, 0.7, im, 0.3, 0, im)
         cv2.imwrite('samples/output_frcnn_{}.jpg'.format(sample_count), im)
-        for idx, box in enumerate(target['bboxes']):
-            x1, y1, x2, y2 = box.detach().cpu().numpy()
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-            
-            cv2.rectangle(gt_im, (x1, y1), (x2, y2), thickness=2, color=[0, 255, 0])
-            cv2.rectangle(gt_im_copy, (x1, y1), (x2, y2), thickness=2, color=[0, 255, 0])
-            text = voc.idx2label[target['labels'][idx].detach().cpu().item()]
-            text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_PLAIN, 1, 1)
-            text_w, text_h = text_size
-            cv2.rectangle(gt_im_copy , (x1, y1), (x1 + 10+text_w, y1 + 10+text_h), [255, 255, 255], -1)
-            cv2.putText(gt_im, text=voc.idx2label[target['labels'][idx].detach().cpu().item()],
-                        org=(x1+5, y1+15),
-                        thickness=1,
-                        fontScale=1,
-                        color=[0, 0, 0],
-                        fontFace=cv2.FONT_HERSHEY_PLAIN)
-            cv2.putText(gt_im_copy, text=text,
-                        org=(x1 + 5, y1 + 15),
-                        thickness=1,
-                        fontScale=1,
-                        color=[0, 0, 0],
-                        fontFace=cv2.FONT_HERSHEY_PLAIN)
-            x1, y1, x2, y2 = box.detach().cpu().numpy()
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-            cv2.rectangle(im, (x1, y1), (x2, y2), thickness=2, color=[0, 0, 255])
-            cv2.rectangle(im_copy, (x1, y1), (x2, y2), thickness=2, color=[0, 0, 255])
-            text = '{} : {:.2f}'.format(voc.idx2label[labels[idx].detach().cpu().item()],
-                                        scores[idx].detach().cpu().item())
-            text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_PLAIN, 1, 1)
-            text_w, text_h = text_size
-            cv2.rectangle(im_copy , (x1, y1), (x1 + 10+text_w, y1 + 10+text_h), [255, 255, 255], -1)
-            cv2.putText(im, text=text,
-                        org=(x1+5, y1+15),
-                        thickness=1,
-                        fontScale=1,
-                        color=[0, 0, 0],
-                        fontFace=cv2.FONT_HERSHEY_PLAIN)
-            cv2.putText(im_copy, text=text,
-                        org=(x1 + 5, y1 + 15),
-                        thickness=1,
-                        fontScale=1,
-                        color=[0, 0, 0],
-                        fontFace=cv2.FONT_HERSHEY_PLAIN)
-        cv2.addWeighted(gt_im_copy, 0.7, gt_im, 0.3, 0, gt_im)
-        cv2.imwrite('samples/output_frcnn_both_{}.png'.format(sample_count), gt_im)
             
 
 
