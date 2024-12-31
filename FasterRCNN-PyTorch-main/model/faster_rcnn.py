@@ -780,60 +780,6 @@ def get_depth_backbone(pretrained=True):
     vgg16.features[0] = new_conv_layer
     return vgg16.features[:-1]
 
-def get_depth_backbone_reduced(pretrained=True):
-    """Get lightweight VGG16-like backbone for depth channel with reduced parameters"""
-    vgg16 = torchvision.models.vgg16(pretrained=pretrained)
-    
-    # Create a new sequential container for our modified backbone
-    depth_backbone = nn.Sequential()
-    
-    # Modify first layer to accept single channel
-    first_conv_layer = vgg16.features[0]
-    new_conv_layer = nn.Conv2d(
-        in_channels=1,
-        out_channels=first_conv_layer.out_channels // 2,  # Reduce initial channels
-        kernel_size=first_conv_layer.kernel_size,
-        stride=first_conv_layer.stride,
-        padding=first_conv_layer.padding,
-        bias=first_conv_layer.bias is not None
-    )
-    
-    # Initialize weights using mean of RGB weights
-    with torch.no_grad():
-        weights = torch.mean(first_conv_layer.weight, dim=1, keepdim=True)
-        new_conv_layer.weight = nn.Parameter(weights[:new_conv_layer.out_channels])
-        if first_conv_layer.bias is not None:
-            new_conv_layer.bias = nn.Parameter(first_conv_layer.bias[:new_conv_layer.out_channels])
-    
-    depth_backbone.add_module('conv1', new_conv_layer)
-    depth_backbone.add_module('relu1', nn.ReLU(inplace=True))
-    
-    # Add depthwise separable convolutions instead of regular convolutions
-    def add_depthwise_separable_block(in_channels, out_channels, name):
-        # Depthwise convolution
-        depth_backbone.add_module(f'{name}_depthwise', nn.Conv2d(
-            in_channels, in_channels, kernel_size=3, padding=1, groups=in_channels))
-        depth_backbone.add_module(f'{name}_pointwise', nn.Conv2d(
-            in_channels, out_channels, kernel_size=1))
-        depth_backbone.add_module(f'{name}_relu', nn.ReLU(inplace=True))
-    
-    # Create a lighter architecture with fewer channels but same spatial dimensions
-    channel_configs = [
-        (64, 128),   # First block
-        (128, 256),  # Second block
-        (256, 512),  # Third block
-        (512, 512),  # Fourth block
-    ]
-    
-    current_channels = new_conv_layer.out_channels
-    for i, (_, out_channels) in enumerate(channel_configs):
-        add_depthwise_separable_block(current_channels, out_channels, f'block{i+1}')
-        depth_backbone.add_module(f'pool{i+1}', nn.MaxPool2d(kernel_size=2, stride=2))
-        current_channels = out_channels
-    
-    return depth_backbone
-
-
 class FasterRCNN(nn.Module):
     def __init__(self, model_config, num_classes):
         super(FasterRCNN, self).__init__()
@@ -841,7 +787,7 @@ class FasterRCNN(nn.Module):
         
         
         self.rgb_backbone = get_rgb_backbone(pretrained=True)
-        self.depth_backbone = get_depth_backbone_reduced(pretrained=True)
+        self.depth_backbone = get_depth_backbone(pretrained=True)
         
         # Feature fusion layer to combine RGB and depth features
         self.feature_fusion = nn.Sequential(
@@ -869,11 +815,10 @@ class FasterRCNN(nn.Module):
         dtype, device = image.dtype, image.device
         
         # Normalize
-        #mean = torch.as_tensor(self.image_mean[:3], dtype=dtype, device=device)
-        #std = torch.as_tensor(self.image_std[:3], dtype=dtype, device=device)
-    
+        mean = torch.as_tensor([0.485, 0.456, 0.406], dtype=dtype, device=device)
+        std = torch.as_tensor([0.229, 0.224, 0.225], dtype=dtype, device=device)
         # Apply normalization to the first 3 channels only
-        #image[0:3] = (image[0:3] - mean[:, None, None]) / std[:, None, None]
+        image[:, :3, :, :]  = (image[:, :3, :, :]  - mean[:, None, None]) / std[:, None, None]
         #############
         
         # Resize to 1000x600 such that lowest size dimension is scaled upto 600
@@ -914,28 +859,34 @@ class FasterRCNN(nn.Module):
     
     def backbone(self, x):
         # Split input into RGB and depth channels
-        rgb_input = x[:, :3]  
-        depth_input = x[:, 3:].unsqueeze(1) 
-
+        rgb_input = x[:, :3]  # First 3 channels
+        depth_input = x[:, 3:].unsqueeze(1)  # Last channel
+        
+        # Process through respective backbones
         rgb_features = self.rgb_backbone(rgb_input)
         depth_features = self.depth_backbone(depth_input)
+        
+        # Concatenate features along channel dimension
         combined_features = torch.cat([rgb_features, depth_features], dim=1)
         
+        # Fuse features
         fused_features = self.feature_fusion(combined_features)
         
         return fused_features
     
     def process_features(self, x):
-        rgb_input = x[:, :3]  
-        depth_input = x[:, 3:]
+        # Split input into RGB and depth channels
+        rgb_input = x[:, :3]  # First 3 channels
+        depth_input = x[:, 3:] # Last channel
         
-
+        # Process through respective backbones
         rgb_features = self.rgb_backbone(rgb_input)
         depth_features = self.depth_backbone(depth_input)
         
-     
+        # Concatenate features along channel dimension
         combined_features = torch.cat([rgb_features, depth_features], dim=1)
-    
+        
+        # Fuse features
         fused_features = self.feature_fusion(combined_features)
         
         return fused_features
@@ -956,6 +907,8 @@ class FasterRCNN(nn.Module):
         rpn_output = self.rpn(image, feat, target)
         proposals = rpn_output['proposals']
         
+        #print("Shape of proposals forward fasterrcnn:", proposals.shape)
+        #print("Number of proposals forward fasterrcnn:", proposals.size(0))
         # Call ROI head and convert proposals to boxes
         try: 
             frcnn_output = self.roi_head(feat, proposals, image.shape[-2:], target)
@@ -974,7 +927,6 @@ class FasterRCNN(nn.Module):
                                                                      image.shape[-2:],
                                                                      old_shape)
         return rpn_output, frcnn_output
-
 
 
 
