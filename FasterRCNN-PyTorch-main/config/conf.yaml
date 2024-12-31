@@ -42,4 +42,4 @@ train_params:
   lr_steps : [12, 16]
   lr: 0.001
   ckpt_name: 'model_weights.pth'
-  patience : 30
+  patience : 32
