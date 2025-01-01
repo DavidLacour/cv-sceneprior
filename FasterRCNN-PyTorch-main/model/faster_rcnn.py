@@ -750,7 +750,7 @@ class ROIHead(nn.Module):
         return pred_boxes, pred_labels, pred_scores
 
 
-def get_rgb_backbone(pretrained=True):
+def get_rgb_backbone(pretrained=False):
     """Get VGG16 backbone for RGB channels"""
     vgg16 = torchvision.models.vgg16(pretrained=pretrained)
     return vgg16.features[:-1]  # Returns full VGG16 backbone (512 channels)
