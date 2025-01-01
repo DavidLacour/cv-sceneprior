@@ -198,10 +198,12 @@ def save_final_state(best_weights_path,writer, train_info_path, best_model_path,
                     train_config['ckpt_name']))
     
     # Create zip file of logs
+    """
     logs_zip_path = os.path.join(train_config['task_name'], 
                                 f'tensorboard_logs_{timestamp}.zip')
     zip_logs(log_dir, logs_zip_path)
     print(f"\nTensorBoard logs saved to: {logs_zip_path}")
+    """
     
     # Print final training status
     print(f"Best model checkpoint at: {best_model_path}")
@@ -514,6 +516,7 @@ def train(args):
             # Save checkpoint
             checkpoint_path = os.path.join(log_dir, f"checkpoint_epoch_{epoch}.pth")
             
+            """
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': faster_rcnn_model.state_dict(),
@@ -523,6 +526,7 @@ def train(args):
                 'val_map_score': val_map_score,
                 'config': config
             }, checkpoint_path)
+            """
             
             # Update best model path if this is the best mAP
             if early_stopping.best_epoch == epoch:
