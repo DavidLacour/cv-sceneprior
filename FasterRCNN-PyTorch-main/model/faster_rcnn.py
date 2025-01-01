@@ -769,7 +769,7 @@ class FasterRCNN(nn.Module):
         self.model_config = model_config
         
         # Get backbones for RGB and depth streams
-        self.rgb_backbone = get_rgb_backbone(pretrained=True)
+        self.rgb_backbone = get_rgb_backbone(pretrained=False)
         self.depth_backbone = get_depth_backbone()
         
         # Feature fusion layer to combine RGB (512) and depth (1) features
