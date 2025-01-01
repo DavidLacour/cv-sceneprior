@@ -77,7 +77,7 @@ def load_existing_weights(model, weights_path, device, logger=None):
             
             # Load the weights
             model.load_state_dict(state_dict)
-            print("Successfully loaded existing model weights")
+            print("Successfully loaded existing model weights #####################################################333")
             if logger:
                 logger.write("Successfully loaded existing model weights\n")
             return True
@@ -486,12 +486,12 @@ def train(args):
             torch.save(faster_rcnn_model.state_dict(), model_path)
 
             #calulate map for each set 
-            train_map_score = evaluate_map(args,validation_set=False,training_set=True)
+            ain_map_score = evaluate_map(args,validation_set=False,training_set=True)
             val_map_score = evaluate_map(args,validation_set=True)
             test_map_score = evaluate_map(args,validation_set=False,training_set=False)
            
           
-            writer.add_scalar(' train_map', train_map_score, epoch)
+            writer.add_scalar('train_map', train_map_score, epoch)
             writer.add_scalar('val_map', val_map_score, epoch)
             writer.add_scalar('test_map', test_map_score, epoch)
 
