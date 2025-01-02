@@ -780,7 +780,7 @@ class FasterRCNN(nn.Module):
         self.model_config = model_config
         
         #vgg16 = torchvision.models.vgg16(pretrained=False)
-        vgg16 = add_channel_to_vgg16(num_channels=4,)
+        vgg16 = add_channel_to_vgg16(num_channels=4,pretrained=False)
         self.backbone = vgg16.features[:-1]
         self.rpn = RegionProposalNetwork(model_config['backbone_out_channels'],
                                          scales=model_config['scales'],
