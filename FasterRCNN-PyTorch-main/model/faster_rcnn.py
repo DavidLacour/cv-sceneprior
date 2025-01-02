@@ -786,8 +786,8 @@ class FasterRCNN(nn.Module):
         self.model_config = model_config
         
         
-        self.rgb_backbone = get_rgb_backbone(pretrained=True)
-        self.depth_backbone = get_depth_backbone(pretrained=True)
+        self.rgb_backbone = get_rgb_backbone(pretrained=False)
+        self.depth_backbone = get_depth_backbone(pretrained=False)
         
         # Feature fusion layer to combine RGB and depth features
         self.feature_fusion = nn.Sequential(
@@ -804,7 +804,7 @@ class FasterRCNN(nn.Module):
         """
         for layer in self.backbone[:10]:
             for p in layer.parameters():
-                p.requires_grad = False2
+                p.requires_grad = False
         """
         self.image_mean = [0.485, 0.456, 0.406, 25.0]
         self.image_std = [0.229, 0.224, 0.225,10.0]
