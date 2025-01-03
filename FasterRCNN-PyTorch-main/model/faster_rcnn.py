@@ -752,12 +752,12 @@ class FasterRCNN(nn.Module):
                                          aspect_ratios=model_config['aspect_ratios'],
                                          model_config=model_config)
         self.roi_head = ROIHead(model_config, num_classes, in_channels=model_config['backbone_out_channels'])
-        
+        """
         if pretrained: 
             for layer in self.backbone[:10]:
                 for p in layer.parameters():
                     p.requires_grad = False
-        
+        """
         
         #0.438196078 # ivan stats 
         #0.459960784
