@@ -765,10 +765,10 @@ class FasterRCNN(nn.Module):
         #0.208980392
         #0.19745098
         #0.204784314
-        #self.image_mean = [0.485, 0.456, 0.406] voc stats
-        #self.image_std = [0.229, 0.224, 0.225] voc stats
-        self.image_mean = [0.438196078, 0.459960784, 0.443333333]
-        self.image_std = [0.208980392, 0.19745098, 0.204784314]
+        self.image_mean = [0.485, 0.456, 0.406] voc stats
+        self.image_std = [0.229, 0.224, 0.225] voc stats
+        #self.image_mean = [0.438196078, 0.459960784, 0.443333333]
+        #self.image_std = [0.208980392, 0.19745098, 0.204784314]
 
         self.min_size = model_config['min_im_size']
         self.max_size = model_config['max_im_size']
