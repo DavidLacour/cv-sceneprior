@@ -486,7 +486,7 @@ def train(args):
             torch.save(faster_rcnn_model.state_dict(), model_path)
 
             #calulate map for each set 
-            ain_map_score = evaluate_map(args,validation_set=False,training_set=True)
+            train_map_score = evaluate_map(args,validation_set=False,training_set=True)
             val_map_score = evaluate_map(args,validation_set=True)
             test_map_score = evaluate_map(args,validation_set=False,training_set=False)
            
