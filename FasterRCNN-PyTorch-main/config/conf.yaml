@@ -1,8 +1,8 @@
 dataset_params:
   im_train_path: '../../../../mergedcloeivan/train_dataset/JPEGImages'
   ann_train_path: '../../../../mergedcloeivan/train_dataset/Annotations'
-  im_test_path: '../../../../mergedcloeivan/test_dataset/JPEGImages'
-  ann_test_path: '../../../../mergedcloeivan/test_dataset/Annotations'
+  im_test_path: '../../../../mergedcloeivan/infer/JPEGImages'
+  ann_test_path: '../../../../mergedcloeivan/infer/Annotations'
   im_val_path: '../../../../mergedcloeivan/val_dataset/JPEGImages'
   ann_val_path: '../../../../mergedcloeivan/val_dataset/Annotations'
   depth_path:  '../../../../depthmaps'
@@ -35,7 +35,7 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../allMapnotpretrained'
+  task_name: '../../allMap'
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
