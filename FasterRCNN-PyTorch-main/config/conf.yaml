@@ -34,7 +34,7 @@ model_params:
   roi_pos_fraction : 0.25
 
 train_params:
-  task_name: '../../allMapNotPretrained' 
+  task_name: '../../allMap' 
   seed : 1111
   acc_steps : 1 # increase you want to get gradients from >1 steps(kind of mimicking >1 batch size)
   num_epochs: 200
