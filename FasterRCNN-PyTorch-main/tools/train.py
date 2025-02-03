@@ -278,7 +278,7 @@ def train(args):
                                ) 
 
     train_dataloader = DataLoader(train_dataset,
-                               batch_size=1,
+                               batch_size=2,
                                shuffle=True,
                                num_workers=2,
                                ) 
