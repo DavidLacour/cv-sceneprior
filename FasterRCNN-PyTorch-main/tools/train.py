@@ -14,6 +14,60 @@ from torch.utils.data import  Sampler
 #not defined correctly on colab sometimes
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
+def collate_fn9(batch):
+    """
+    Collate function that handles variable numbers of bounding boxes per image.
+    
+    Args:
+        batch (list): List of tuples (image_tensor, annotations_dict, image_path)
+    
+    Returns:
+        tuple: (batch of processed images, dict containing batched bboxes and labels)
+    """
+    images = []
+    all_boxes = []
+    all_labels = []
+  
+    print("yo")
+    # First pass to get max number of boxes
+    max_boxes = 0
+    for image, annotations in batch:
+        num_boxes = len(annotations['bboxes'])
+        max_boxes = max(max_boxes, num_boxes)
+    
+    # Second pass to pad boxes and labels
+    for image, annotations in batch:
+        images.append(image)
+       
+        # Get current boxes and labels
+        boxes = annotations['bboxes']
+        labels = annotations['labels']
+        num_boxes = len(boxes)
+        
+        # Pad boxes if necessary
+        if num_boxes < max_boxes:
+            # Pad boxes with zeros
+            padding = torch.zeros((max_boxes - num_boxes, 4), dtype=boxes.dtype, device=boxes.device)
+            boxes = torch.cat([boxes, padding], dim=0)
+            
+            # Pad labels with zeros or background class (usually 0)
+            label_padding = torch.zeros(max_boxes - num_boxes, dtype=labels.dtype, device=labels.device)
+            labels = torch.cat([labels, label_padding], dim=0)
+        
+        all_boxes.append(boxes)
+        all_labels.append(labels)
+        
+    
+    # Stack everything
+    images = torch.stack(images, dim=0)
+    boxes = torch.stack(all_boxes, dim=0)
+    labels = torch.stack(all_labels, dim=0)
+   
+    
+    # Process images and boxes
+    #images, boxes = normalize_resize_image_and_boxes(images, boxes)
+    print("yo2")
+    return images, {'bboxes': boxes, 'labels': labels}
 
 #num_samples_per_epoch = 1000  # Number of random images to use in each epoch
 
@@ -69,7 +123,8 @@ def train(args):
     train_dataset = DataLoader(voc,
                                batch_size=1,
                                shuffle=True,
-                               num_workers=2
+                               num_workers=2,
+                               collate_fn=collate_fn9
                            
                                )
     
