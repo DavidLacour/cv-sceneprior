@@ -72,6 +72,10 @@ def apply_regression_pred_to_anchors_or_proposals(box_transform_pred, anchors_or
     :param anchors_or_proposals: (num_anchors_or_proposals, 4)
     :return pred_boxes: (num_anchors_or_proposals, num_classes, 4)
     """
+    print("box_transform_pred")
+    print(box_transform_pred.shape)
+
+    print(f"anchors_or_proposals: {anchors_or_proposals.shape}")
     box_transform_pred = box_transform_pred.reshape(
         box_transform_pred.size(0), -1, 4)
     
@@ -227,6 +231,9 @@ class RegionProposalNetwork(nn.Module):
         :param feat: (N, C_feat, H_feat, W_feat) tensor
         :return: anchor boxes of shape (H_feat * W_feat * num_anchors_per_location, 4)
         """
+        print(f"generate anchors image: {image.shape}")
+        print(f"generate feat image: {feat.shape}")
+
         grid_h, grid_w = feat.shape[-2:]
         image_h, image_w = image.shape[-2:]
         
@@ -804,7 +811,9 @@ class FasterRCNN(nn.Module):
             bboxes = torch.stack((xmin, ymin, xmax, ymax), dim=2)
         return image, bboxes
     
+    """
     def forward(self, image, target=None):
+        print(f"frcnn image: {image.shape}")
         old_shape = image.shape[-2:]
         if self.training:
             # Normalize and resize boxes
@@ -828,3 +837,96 @@ class FasterRCNN(nn.Module):
                                                                      image.shape[-2:],
                                                                      old_shape)
         return rpn_output, frcnn_output
+        """
+    def forward(self, images, targets=None):
+        """
+        images:  (N, C, H, W)
+        targets: {'bboxes': (N, max_num_boxes, 4),
+                'labels': (N, max_num_boxes)}
+        """
+
+        self.train() if self.training else self.eval()
+        device = images.device
+        batch_size = images.shape[0]
+
+        # We will store outputs for each image separately,
+        # then combine or return them at the end.
+        all_rpn_outputs = []
+        all_frcnn_outputs = []
+
+        # If training, we’ll accumulate losses in these variables.
+        total_rpn_cls_loss = 0.0
+        total_rpn_loc_loss = 0.0
+        total_frcnn_cls_loss = 0.0
+        total_frcnn_loc_loss = 0.0
+
+        for i in range(batch_size):
+            # Extract single image and single target
+            single_image = images[i].unsqueeze(0)  # shape: (1, C, H, W)
+            if targets is not None:
+                single_target = {
+                    'bboxes': targets['bboxes'][i].unsqueeze(0),  # shape (1, M, 4)
+                    'labels': targets['labels'][i].unsqueeze(0)   # shape (1, M)
+                }
+            else:
+                single_target = None
+
+            # Optionally normalize/resize each image & its boxes individually
+            # single_image, single_target['bboxes'] = self.normalize_resize_image_and_boxes(
+            #     single_image, single_target['bboxes']  # if training
+            # )
+            # old_shape = original H,W before resizing
+            old_shape = single_image.shape[-2:]  # might store for post‐processing
+
+            # 1) Backbone feature extraction
+            feat = self.backbone(single_image)  # shape: (1, C_feat, H_feat, W_feat)
+
+            # 2) RPN forward -> proposals (+ optional RPN losses if training)
+            rpn_output = self.rpn(single_image, feat, single_target)
+            proposals = rpn_output['proposals']  # shape ~ (#proposals, 4)
+
+            # 3) ROI head -> final boxes, labels, scores (+ optional losses)
+            frcnn_output = self.roi_head(feat, proposals, single_image.shape[-2:], single_target)
+
+            # If training, sum up the losses. If not, do post‐processing.
+            if self.training:
+                total_rpn_cls_loss += rpn_output['rpn_classification_loss']
+                total_rpn_loc_loss += rpn_output['rpn_localization_loss']
+                total_frcnn_cls_loss += frcnn_output['frcnn_classification_loss']
+                total_frcnn_loc_loss += frcnn_output['frcnn_localization_loss']
+            else:
+                # For inference, we often want to map boxes back to the original size
+                # prior to any resizing.
+                frcnn_output['boxes'] = transform_boxes_to_original_size(
+                    frcnn_output['boxes'], 
+                    single_image.shape[-2:],  # new_size
+                    old_shape                 # old_size
+                )
+
+            all_rpn_outputs.append(rpn_output)
+            all_frcnn_outputs.append(frcnn_output)
+
+        # Finally combine or return
+        if self.training:
+            # Example: return the average losses across the batch
+            avg_rpn_cls = total_rpn_cls_loss / batch_size
+            avg_rpn_loc = total_rpn_loc_loss / batch_size
+            avg_frcnn_cls = total_frcnn_cls_loss / batch_size
+            avg_frcnn_loc = total_frcnn_loc_loss / batch_size
+
+            # Wrap them to match your existing dictionary style:
+            final_rpn_output = {
+                'rpn_classification_loss': avg_rpn_cls,
+                'rpn_localization_loss': avg_rpn_loc
+            }
+            final_frcnn_output = {
+                'frcnn_classification_loss': avg_frcnn_cls,
+                'frcnn_localization_loss': avg_frcnn_loc
+            }
+            return final_rpn_output, final_frcnn_output
+        else:
+            # Inference: we have a list of dictionaries, one per image
+            # Each dict has 'boxes', 'labels', 'scores' for that image
+            # Or you could flatten them, or any other structure you prefer
+            return all_rpn_outputs, all_frcnn_outputs
+

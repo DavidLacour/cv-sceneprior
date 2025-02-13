@@ -90,5 +90,5 @@ class VOCDataset(Dataset):
                 x1 = im_w - x1 - w
                 x2 = x1 + w
                 targets['bboxes'][idx] = torch.as_tensor([x1, y1, x2, y2])
-        return im_tensor, targets, im_info['filename']
+        return im_tensor, targets #, im_info['filename']
         

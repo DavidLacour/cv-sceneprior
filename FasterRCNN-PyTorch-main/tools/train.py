@@ -28,7 +28,7 @@ def collate_fn9(batch):
     all_boxes = []
     all_labels = []
   
-    print("yo")
+    #print("yo")
     # First pass to get max number of boxes
     max_boxes = 0
     for image, annotations in batch:
@@ -67,6 +67,7 @@ def collate_fn9(batch):
     # Process images and boxes
     #images, boxes = normalize_resize_image_and_boxes(images, boxes)
     print("yo2")
+    print(images.shape)
     return images, {'bboxes': boxes, 'labels': labels}
 
 #num_samples_per_epoch = 1000  # Number of random images to use in each epoch
@@ -121,7 +122,7 @@ def train(args):
     
     # ,sampler=sampler
     train_dataset = DataLoader(voc,
-                               batch_size=1,
+                               batch_size=7,
                                shuffle=True,
                                num_workers=2,
                                collate_fn=collate_fn9
@@ -153,7 +154,7 @@ def train(args):
         frcnn_localization_losses = []
         optimizer.zero_grad()
         
-        for im, target, fname in tqdm(train_dataset):
+        for im, target in tqdm(train_dataset):
             im = im.float().to(device)
             target['bboxes'] = target['bboxes'].float().to(device)
             target['labels'] = target['labels'].long().to(device)
@@ -162,12 +163,13 @@ def train(args):
             rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
             frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
             loss = rpn_loss + frcnn_loss
+            """
             if (np.isnan(loss)):
                 print("NAN")
                 print("step: ",step_count)
-                print(fname)
+              
                 print(target)
-
+            """
             rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
             rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
             frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
