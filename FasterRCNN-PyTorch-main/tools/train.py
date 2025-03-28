@@ -122,7 +122,7 @@ def train(args):
     
     # ,sampler=sampler
     train_dataset = DataLoader(voc,
-                               batch_size=7,
+                               batch_size=6,
                                shuffle=True,
                                num_workers=2,
                                collate_fn=collate_fn9

@@ -217,6 +217,190 @@ class RegionProposalNetwork(nn.Module):
         for layer in [self.rpn_conv, self.cls_layer, self.bbox_reg_layer]:
             torch.nn.init.normal_(layer.weight, std=0.01)
             torch.nn.init.constant_(layer.bias, 0)
+
+    def generate_anchors9(self, images, feats):
+        """
+        images: (B, N, C, H, W)
+        feats:  (B, N, C_feat, H_feat, W_feat)
+        
+        Returns:
+        anchors: (B, H_feat * W_feat * num_anchors_per_location, 4)
+        """
+        import torch
+
+        # -------------------------------------------------------------------------
+        # 1) Parse shapes and check consistency
+        # -------------------------------------------------------------------------
+        B, N,   _, H,      W      = images.shape  # (B, N, C, H, W)
+        B2, N2, _, H_feat, W_feat = feats.shape   # (B, N, C_feat, H_feat, W_feat)
+        assert B == B2 and N == N2, "Batch shapes for images and features must match"
+
+        # For simplicity, assume all images have same H,W and same H_feat, W_feat
+        # If that is not the case in your pipeline, you could handle it with
+        # per-item logic, but that typically involves loops.
+
+        # -------------------------------------------------------------------------
+        # 2) Compute "stride" and create base anchors (identical to your old logic)
+        # -------------------------------------------------------------------------
+        stride_h = H // H_feat
+        stride_w = W // W_feat
+
+        # Convert Python lists to tensors on correct device/dtype
+        scales = torch.as_tensor(self.scales, 
+                                dtype=feats.dtype, device=feats.device)
+        aspect_ratios = torch.as_tensor(self.aspect_ratios, 
+                                        dtype=feats.dtype, device=feats.device)
+
+        # Same logic as before for widths/heights
+        # Suppose num_anchors = len(scales) * len(aspect_ratios)
+        h_ratios = torch.sqrt(aspect_ratios)  # shape (A_r, )
+        w_ratios = 1.0 / h_ratios             # shape (A_r, )
+
+        # Expand with scales
+        ws = (w_ratios[:, None] * scales[None, :]).view(-1)  # (num_anchors,)
+        hs = (h_ratios[:, None] * scales[None, :]).view(-1)  # (num_anchors,)
+
+        # Zero-centered anchors: x1,y1,x2,y2 = -w/2, -h/2, w/2, h/2
+        base_anchors = torch.stack([-ws, -hs, ws, hs], dim=1) / 2
+        base_anchors = base_anchors.round()  # shape: (num_anchors, 4)
+
+        # -------------------------------------------------------------------------
+        # 3) Create the (H_feat, W_feat) grid of shifts
+        #    2D meshgrid + reshape => shape (H_feat*W_feat, 4)
+        # -------------------------------------------------------------------------
+        shift_x = torch.arange(W_feat, dtype=feats.dtype, device=feats.device) * stride_w
+        shift_y = torch.arange(H_feat, dtype=feats.dtype, device=feats.device) * stride_h
+
+        shift_y, shift_x = torch.meshgrid(shift_y, shift_x, indexing='ij')
+        # shift_x, shift_y: (H_feat, W_feat)
+
+        shift_x = shift_x.reshape(-1)  # (H_feat*W_feat,)
+        shift_y = shift_y.reshape(-1)  # (H_feat*W_feat,)
+
+        # Each “shift” is (x1, y1, x2, y2).  We just replicate shift_x for x1,x2
+        # and shift_y for y1,y2
+        shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)
+        # shifts.shape = (H_feat*W_feat, 4)
+
+        # -------------------------------------------------------------------------
+        # 4) Add base_anchors to shifts to get the final anchor boxes at each cell
+        # -------------------------------------------------------------------------
+        # base_anchors: (A, 4)
+        # shifts      : (H_feat*W_feat, 4)
+
+        # Make them broadcastable:
+        #   => shifts.view(#grid,1,4) + base_anchors.view(1,#anchors,4)
+        #   => shape (#grid, #anchors, 4)
+        # then flatten to (#grid * #anchors, 4).
+        anchors_per_map = (shifts[:, None, :] + base_anchors[None, :, :])  # (H_feat*W_feat, A, 4)
+        anchors_per_map = anchors_per_map.reshape(-1, 4)                   # (H_feat*W_feat*A, 4)
+
+        # -------------------------------------------------------------------------
+        # 5) Finally, replicate anchors for the batch dimension B
+        #    We also have an extra dimension N in images, feats => (B, N, ...)
+        #    The question says: "return shape (B, H_feat*W_feat*#anchors, 4)"
+        #
+        #    So we can either treat (B*N) as the “batch size”, or
+        #    we can ignore the N dimension and just replicate the anchor grid for each B
+        #
+        #    If you truly need (B, N, H_feat*W_feat*A, 4), do:
+        #         anchors = anchors_per_map.unsqueeze(0).unsqueeze(0)
+        #         anchors = anchors.expand(B, N, -1, -1)
+        #         return anchors
+        #
+        #    But to match the final request: (B, H_feat*W_feat*A, 4)
+        #    we can just expand only across B and flatten out N with no loops.
+        # -------------------------------------------------------------------------
+        # Flatten B,N -> B*N if you want a single "batch" dimension,
+        # or just replicate once per B and ignore N. 
+        # The question specifically says it wants (B, ...), ignoring N. 
+        # So let's replicate once per B:
+        
+        # shape => (1, #grid*A, 4)
+        anchors_per_map = anchors_per_map.unsqueeze(0)  # (1, H_feat*W_feat*A, 4)
+        
+        # replicate along the batch dimension B
+        # => (B, H_feat*W_feat*A, 4)
+        anchors = anchors_per_map.expand(B, -1, -1)
+
+        return anchors
+
+    def generate_anchors7(self, images, feats):
+        """
+        images: (N, C, H, W)     - input images
+        feats: (N, C_feat, Hf, Wf)  - feature maps extracted by the backbone
+        scales: list or 1D tensor of anchor scales
+        aspect_ratios: list or 1D tensor of aspect ratios
+        Return:
+            anchors: (N, Hf*Wf*num_anchors_per_loc, 4)
+        """
+        device = feats.device
+        dtype = feats.dtype
+        scales = torch.as_tensor(self.scales, dtype=feats.dtype, device=feats.device)
+        aspect_ratios = torch.as_tensor(self.aspect_ratios, dtype=feats.dtype, device=feats.device)
+        N, _, H, W = images.shape
+        _, _, Hf, Wf = feats.shape  # feature-map size
+
+        # ----------------------------------------------------------
+        # 1. Compute "base anchors" centered at (0, 0)
+        #    for all combinations of (scale, aspect_ratio).
+        # ----------------------------------------------------------
+        scales_t = torch.as_tensor(scales, dtype=dtype, device=device)
+        ratios_t = torch.as_tensor(aspect_ratios, dtype=dtype, device=device)
+        
+        # sqrt(aspect_ratio) => height multiplier; its reciprocal => width multiplier
+        h_ratios = torch.sqrt(ratios_t)
+        w_ratios = 1.0 / h_ratios
+        
+        # For each (scale, ratio), compute width & height
+        # Example: for scale=128 & ratio=2 => area=128^2; h/w=2 => h=~181, w=~90.5
+        ws = (w_ratios[:, None] * scales_t[None, :]).view(-1)  # shape = (#anchors)
+        hs = (h_ratios[:, None] * scales_t[None, :]).view(-1)  # shape = (#anchors)
+        
+        # Make them centered at (0,0): (x1,y1,x2,y2)
+        # i.e. x1=-w/2, x2=+w/2, etc.
+        base_anchors = torch.stack([-ws, -hs, ws, hs], dim=1) / 2
+        base_anchors = base_anchors.round()  # shape = (A, 4) where A=#anchors per location
+
+        # ----------------------------------------------------------
+        # 2. Compute the "shifts" for each location in the feature map
+        #    so we know where to place those base anchors in the image.
+        # ----------------------------------------------------------
+        # Suppose we treat stride as integer division of image sizes:
+        stride_h = H // Hf
+        stride_w = W // Wf
+
+        # x-coordinates of the feature-map cells
+        shift_x = torch.arange(Wf, dtype=dtype, device=device) * stride_w
+        # y-coordinates of the feature-map cells
+        shift_y = torch.arange(Hf, dtype=dtype, device=device) * stride_h
+
+        # Create a full 2D grid of shifts (Hf x Wf)
+        shift_y, shift_x = torch.meshgrid(shift_y, shift_x, indexing="ij")
+        # Flatten to (Hf*Wf,)
+        shift_x = shift_x.reshape(-1)
+        shift_y = shift_y.reshape(-1)
+        
+        # Combine them into (x1,y1,x2,y2) form
+        # so we can add them to base_anchors easily
+        shifts = torch.stack([shift_x, shift_y, shift_x, shift_y], dim=1)
+        # shifts: (Hf*Wf, 4)
+
+        # ----------------------------------------------------------
+        # 3. Add base anchors to each shift => anchors for 1 image
+        #    shape => (Hf*Wf, A, 4)
+        # ----------------------------------------------------------
+        anchors_1img = shifts.unsqueeze(1) + base_anchors.unsqueeze(0)
+        # Flatten => (Hf*Wf * A, 4)
+        anchors_1img = anchors_1img.reshape(-1, 4)
+
+        # ----------------------------------------------------------
+        # 4. Replicate anchors for the entire batch (N).  
+        #    shape => (N, Hf*Wf*A, 4)
+        # ----------------------------------------------------------
+        anchors = anchors_1img.unsqueeze(0).expand(N, -1, -1)
+
+        return anchors
     
     def generate_anchors(self, image, feat):
         r"""
@@ -444,10 +628,13 @@ class RegionProposalNetwork(nn.Module):
         rpn_feat = nn.ReLU()(self.rpn_conv(feat))
         cls_scores = self.cls_layer(rpn_feat)
         box_transform_pred = self.bbox_reg_layer(rpn_feat)
-
+        print(f"image genenare anchors rpn {image.shape}")
+        print(f"feat genenare anchors rpn {feat.shape}")
         # Generate anchors
         anchors = self.generate_anchors(image, feat)
+        batch_size = feat.shape[0]  # or image.size(0) if available
         
+
         # Reshape classification scores to be (Batch Size * H_feat * W_feat * Number of Anchors Per Location, 1)
         # cls_score -> (Batch_Size, Number of Anchors per location, H_feat, W_feat)
         number_of_anchors_per_location = cls_scores.size(1)
@@ -467,7 +654,20 @@ class RegionProposalNetwork(nn.Module):
         box_transform_pred = box_transform_pred.reshape(-1, 4)
         # box_transform_pred -> (Batch_Size*H_feat*W_feat*Number of Anchors per location, 4)
         
+        print(f"anchors shape before apply {anchors.shape}")
+        print(f"box_transform_pred_shape {box_transform_pred.shape}")
         # Transform generated anchors according to box transformation prediction
+
+        #batch_size = 7  # example value
+        #num_anchors = anchors.size(0)  # 19530
+        #box_transform_pred = box_transform_pred.view(batch_size, num_anchors, 4)
+        #anchors = anchors.unsqueeze(0).expand(batch_size, num_anchors, 4)
+        #box_transform_pred = box_transform_pred.reshape(-1, 1, 4)  # shape: (B*num_anchors, 1, 4)
+        #anchors = anchors.reshape(-1, 4)  # shape: (B*num_anchors, 4)
+        if(box_transform_pred.shape[0]>anchors.shape[0]):
+            anchors = anchors.unsqueeze(0).expand(batch_size, -1, -1).reshape(-1, 4)
+
+
         proposals = apply_regression_pred_to_anchors_or_proposals(
             box_transform_pred.detach().reshape(-1, 1, 4),
             anchors)
@@ -811,7 +1011,7 @@ class FasterRCNN(nn.Module):
             bboxes = torch.stack((xmin, ymin, xmax, ymax), dim=2)
         return image, bboxes
     
-    """
+    
     def forward(self, image, target=None):
         print(f"frcnn image: {image.shape}")
         old_shape = image.shape[-2:]
@@ -837,13 +1037,14 @@ class FasterRCNN(nn.Module):
                                                                      image.shape[-2:],
                                                                      old_shape)
         return rpn_output, frcnn_output
-        """
-    def forward(self, images, targets=None):
-        """
-        images:  (N, C, H, W)
-        targets: {'bboxes': (N, max_num_boxes, 4),
-                'labels': (N, max_num_boxes)}
-        """
+        
+    
+    def forward2(self, images, targets=None):
+      
+        #images:  (N, C, H, W)
+       # targets: {'bboxes': (N, max_num_boxes, 4),
+       #         'labels': (N, max_num_boxes)}
+      
 
         self.train() if self.training else self.eval()
         device = images.device
