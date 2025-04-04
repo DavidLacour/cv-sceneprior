@@ -11,10 +11,10 @@ from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.data import  Sampler
 
-#not defined correctly on colab sometimes
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
-def collate_fn9(batch):
+def collate_fn(batch):
     """
     Collate function that handles variable numbers of bounding boxes per image.
     
@@ -28,7 +28,7 @@ def collate_fn9(batch):
     all_boxes = []
     all_labels = []
   
-    #print("yo")
+   
     # First pass to get max number of boxes
     max_boxes = 0
     for image, annotations in batch:
@@ -86,8 +86,6 @@ class SubsetRandomSampler(Sampler):
         return self.num_samples
 
 def train(args):
-
-    #not defined correctly on colab sometimes
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
     # Read the config file #
     with open(args.config_path, 'r') as file:
@@ -115,17 +113,11 @@ def train(args):
                      im_dir=dataset_config['im_train_path'],
                      ann_dir=dataset_config['ann_train_path'])
     
-
-    #total_samples = len(train_dataset)
-    #num_samples_per_epoch = 1000
-    #sampler = SubsetRandomSampler(total_samples, num_samples_per_epoch)
-    
-    # ,sampler=sampler
     train_dataset = DataLoader(voc,
                                batch_size=6,
                                shuffle=True,
                                num_workers=2,
-                               collate_fn=collate_fn9
+                               collate_fn=collate_fn
                            
                                )
     
@@ -163,13 +155,7 @@ def train(args):
             rpn_loss = rpn_output['rpn_classification_loss'] + rpn_output['rpn_localization_loss']
             frcnn_loss = frcnn_output['frcnn_classification_loss'] + frcnn_output['frcnn_localization_loss']
             loss = rpn_loss + frcnn_loss
-            """
-            if (np.isnan(loss)):
-                print("NAN")
-                print("step: ",step_count)
-              
-                print(target)
-            """
+    
             rpn_classification_losses.append(rpn_output['rpn_classification_loss'].item())
             rpn_localization_losses.append(rpn_output['rpn_localization_loss'].item())
             frcnn_classification_losses.append(frcnn_output['frcnn_classification_loss'].item())
@@ -181,8 +167,6 @@ def train(args):
                 optimizer.zero_grad()
             step_count += 1
         print('Finished epoch {}'.format(i))
-        #optimizer.step()
-        #optimizer.zero_grad()
         torch.save(faster_rcnn_model.state_dict(), os.path.join(train_config['task_name'],
                                                                 train_config['ckpt_name']))
         loss_output = ''
