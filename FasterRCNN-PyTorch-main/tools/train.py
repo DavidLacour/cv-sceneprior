@@ -49,6 +49,62 @@ def cleanup_old_checkpoints(log_dir, current_epoch, patience):
                 continue
 
 
+
+
+def collate_fn(batch):
+    """
+    Collate function that handles variable numbers of bounding boxes per image.
+    
+    Args:
+        batch (list): List of tuples (image_tensor, annotations_dict, image_path)
+    
+    Returns:
+        tuple: (batch of processed images, dict containing batched bboxes and labels, list of filenames)
+    """
+    images = []
+    all_boxes = []
+    all_labels = []
+    all_fnames = []  # New list to store filenames
+  
+    # First pass to get max number of boxes
+    max_boxes = 0
+    for image, annotations, fname in batch:
+        num_boxes = len(annotations['bboxes'])
+        max_boxes = max(max_boxes, num_boxes)
+    
+    # Second pass to pad boxes and labels
+    for image, annotations, fname in batch:
+        images.append(image)
+        all_fnames.append(fname)  # Store filename
+       
+        # Get current boxes and labels
+        boxes = annotations['bboxes']
+        labels = annotations['labels']
+        num_boxes = len(boxes)
+        
+        # Pad boxes if necessary
+        if num_boxes < max_boxes:
+            # Pad boxes with zeros
+            padding = torch.zeros((max_boxes - num_boxes, 4), dtype=boxes.dtype, device=boxes.device)
+            boxes = torch.cat([boxes, padding], dim=0)
+            
+            # Pad labels with zeros or background class (usually 0)
+            label_padding = torch.zeros(max_boxes - num_boxes, dtype=labels.dtype, device=labels.device)
+            labels = torch.cat([labels, label_padding], dim=0)
+        
+        all_boxes.append(boxes)
+        all_labels.append(labels)
+        
+    
+    # Stack everything
+    images = torch.stack(images, dim=0)
+    boxes = torch.stack(all_boxes, dim=0)
+    labels = torch.stack(all_labels, dim=0)
+    
+    # Return images, annotations dict, and filenames
+    return images, {'bboxes': boxes, 'labels': labels}, all_fnames
+
+
 def load_existing_weights(model, weights_path, device, logger=None):
     """
     Check for and load existing model weights if they exist.
@@ -255,9 +311,11 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'])
     
     train_dataloader = DataLoader(train_dataset,
-                             batch_size=1,
+                             batch_size=2,
                              shuffle=True,
-                             num_workers=2)
+                             num_workers=2,
+                             #collate_fn=collate_fn
+                             )
     
     val_dataset = VOCDataset('val',
                      im_dir=dataset_config['im_val_path'],
