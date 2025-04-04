@@ -66,8 +66,8 @@ def collate_fn(batch):
     
     # Process images and boxes
     #images, boxes = normalize_resize_image_and_boxes(images, boxes)
-    print("yo2")
-    print(images.shape)
+    #print("yo2")
+    #print(images.shape)
     return images, {'bboxes': boxes, 'labels': labels}
 
 #num_samples_per_epoch = 1000  # Number of random images to use in each epoch
@@ -114,7 +114,7 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'])
     
     train_dataset = DataLoader(voc,
-                               batch_size=1,
+                               batch_size=18,
                                shuffle=True,
                                num_workers=2,
                                collate_fn=collate_fn
