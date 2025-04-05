@@ -112,7 +112,7 @@ def train(args):
                      ann_dir=dataset_config['ann_train_path'])
     
     train_dataset = DataLoader(voc,
-                               batch_size=64,
+                               batch_size=80,
                                shuffle=True,
                                num_workers=2,
                                collate_fn=collate_fn
