@@ -13,62 +13,60 @@ from torch.utils.data import  Sampler
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
-
 def collate_fn(batch):
     """
-    Collate function that handles variable numbers of bounding boxes per image.
+    Collate function that handles variable numbers of bounding boxes per image,
+    with a fixed maximum of 100 annotations, implemented without explicit for loops.
     
     Args:
-        batch (list): List of tuples (image_tensor, annotations_dict, image_path)
-    
+        batch (list): List of tuples (image_tensor, annotations_dict)
     Returns:
         tuple: (batch of processed images, dict containing batched bboxes and labels)
     """
-    images = []
-    all_boxes = []
-    all_labels = []
-  
-   
-    # First pass to get max number of boxes
-    max_boxes = 0
-    for image, annotations in batch:
-        num_boxes = len(annotations['bboxes'])
-        max_boxes = max(max_boxes, num_boxes)
+    max_boxes = 100  # Fixed maximum number of annotations
     
-    # Second pass to pad boxes and labels
-    for image, annotations in batch:
-        images.append(image)
-       
-        # Get current boxes and labels
-        boxes = annotations['bboxes']
-        labels = annotations['labels']
-        num_boxes = len(boxes)
+    # Unpack batch using zip
+    images, annotations = zip(*batch)
+    
+    # Stack images
+    batch_images = torch.stack(images)
+    
+    # Extract boxes and labels from annotations
+    boxes_list = [ann['bboxes'] for ann in annotations]
+    labels_list = [ann['labels'] for ann in annotations]
+    
+    # Process boxes - cap at max_boxes and pad to fixed size
+    processed_boxes = []
+    processed_labels = []
+    
+    for boxes, labels in zip(boxes_list, labels_list):
+        # Cap at max_boxes if needed
+        boxes = boxes[:max_boxes]
+        labels = labels[:max_boxes]
         
-        # Pad boxes if necessary
+        # Get current number of boxes
+        num_boxes = boxes.shape[0]
+        
+        # Pad if needed
         if num_boxes < max_boxes:
-            # Pad boxes with zeros
-            padding = torch.zeros((max_boxes - num_boxes, 4), dtype=boxes.dtype, device=boxes.device)
-            boxes = torch.cat([boxes, padding], dim=0)
+            box_padding = torch.zeros((max_boxes - num_boxes, 4), 
+                                     dtype=boxes.dtype, 
+                                     device=boxes.device)
+            label_padding = torch.zeros(max_boxes - num_boxes, 
+                                      dtype=labels.dtype, 
+                                      device=labels.device)
             
-            # Pad labels with zeros or background class (usually 0)
-            label_padding = torch.zeros(max_boxes - num_boxes, dtype=labels.dtype, device=labels.device)
+            boxes = torch.cat([boxes, box_padding], dim=0)
             labels = torch.cat([labels, label_padding], dim=0)
         
-        all_boxes.append(boxes)
-        all_labels.append(labels)
-        
+        processed_boxes.append(boxes)
+        processed_labels.append(labels)
     
-    # Stack everything
-    images = torch.stack(images, dim=0)
-    boxes = torch.stack(all_boxes, dim=0)
-    labels = torch.stack(all_labels, dim=0)
-   
+    # Stack into batch tensors
+    batch_boxes = torch.stack(processed_boxes)
+    batch_labels = torch.stack(processed_labels)
     
-    # Process images and boxes
-    #images, boxes = normalize_resize_image_and_boxes(images, boxes)
-    #print("yo2")
-    #print(images.shape)
-    return images, {'bboxes': boxes, 'labels': labels}
+    return batch_images, {'boxes': batch_boxes, 'labels': batch_labels}
 
 #num_samples_per_epoch = 1000  # Number of random images to use in each epoch
 
