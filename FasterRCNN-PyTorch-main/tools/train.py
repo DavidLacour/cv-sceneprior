@@ -66,7 +66,7 @@ def collate_fn(batch):
     batch_boxes = torch.stack(processed_boxes)
     batch_labels = torch.stack(processed_labels)
     
-    return batch_images, {'boxes': batch_boxes, 'labels': batch_labels}
+    return batch_images, {'bboxes': batch_boxes, 'labels': batch_labels}
 
 #num_samples_per_epoch = 1000  # Number of random images to use in each epoch
 
